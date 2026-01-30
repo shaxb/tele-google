@@ -273,12 +273,13 @@ class Config:
             print(f"Copy .env.template to .env and configure your settings")
         
         # Initialize all configuration sections
-        self.telegram = TelegramConfig()
-        self.openai = OpenAIConfig()
-        self.meilisearch = MeilisearchConfig()
-        self.database = DatabaseConfig()
-        self.bot = BotConfig()
-        self.app = AppConfig()
+        # Pydantic automatically loads from .env file
+        self.telegram = TelegramConfig()  # type: ignore
+        self.openai = OpenAIConfig()  # type: ignore
+        self.meilisearch = MeilisearchConfig()  # type: ignore
+        self.database = DatabaseConfig()  # type: ignore
+        self.bot = BotConfig()  # type: ignore
+        self.app = AppConfig()  # type: ignore
         
         # Create required data directories
         self._create_directories()

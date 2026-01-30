@@ -99,7 +99,7 @@ def setup_logger(log_level: str = "INFO", log_file: str = "logs/app.log"):
     return logger
 
 
-def get_logger(module_name: str = None):
+def get_logger(module_name: str):
     """
     Get a logger instance bound to a specific module
     
@@ -125,7 +125,7 @@ def get_logger(module_name: str = None):
             # Try to get the script name from sys.argv
             import sys
             import os
-            script_name = os.path.basename(sys.argv[0]).replace('.py', '')
+            script_name = os.path.basename(sys.argv[0] or "main").replace('.py', '')
             return logger.bind(module=script_name)
         else:
             return logger.bind(module=module_name)

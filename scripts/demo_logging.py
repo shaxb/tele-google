@@ -50,7 +50,7 @@ def error_example():
     try:
         # Simulate database error
         connection = None
-        connection.execute("SELECT * FROM users")
+        connection.execute("SELECT * FROM users")  # type: ignore
     except Exception as e:
         log.exception("Database connection failed")
 

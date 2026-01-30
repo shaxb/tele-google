@@ -6,6 +6,11 @@
     ],
     "python.analysis.autoImportCompletions": true,
     "python.analysis.typeCheckingMode": "basic",
+    "python.analysis.diagnosticSeverityOverrides": {
+        "reportAttributeAccessIssue": "warning",
+        "reportCallIssue": "warning",
+        "reportArgumentType": "warning"
+    },
     "python.linting.enabled": false,
     "python.formatting.provider": "none",
     "[python]": {
