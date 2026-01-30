@@ -34,10 +34,10 @@ meilisearch==0.40.0
 psycopg2-binary==2.9.11
 
 # SQLAlchemy ORM
-sqlalchemy>=2.0.0
+sqlalchemy==2.0.46
 
 # Alembic for database migrations
-alembic>=1.12.0
+alembic==1.18.3
 
 # ============================================================================
 # ENVIRONMENT & CONFIGURATION
@@ -56,31 +56,31 @@ pydantic-settings==2.12.0
 aiohttp==3.13.3
 
 # Async support for PostgreSQL
-asyncpg>=0.28.0
+asyncpg==0.31.0
 
 # ============================================================================
 # UTILITIES
 # ============================================================================
 # Date/time handling
-python-dateutil>=2.8.0
+python-dateutil==2.9.0.post0
 
 # Image processing
-pillow>=10.0.0
+pillow==12.1.0
 
 # JSON validation
-jsonschema>=4.19.0
+jsonschema==4.26.0
 
 # Retry logic
-tenacity>=8.2.0
+tenacity==9.1.2
 
-# Progress bars
+# Progress bars (already installed with other packages)
 tqdm>=4.65.0
 
 # ============================================================================
 # LOGGING & MONITORING
 # ============================================================================
 # Structured logging
-loguru>=0.7.0
+loguru==0.7.3
 
 # ============================================================================
 # TESTING (Development)
