@@ -2,11 +2,13 @@
 Meilisearch Wrapper
 Handles search index initialization, document indexing, and search queries
 """
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Union
 from datetime import datetime
 import meilisearch
 from meilisearch.index import Index
 from meilisearch.errors import MeilisearchApiError
+from meilisearch.task import TaskInfo  # type: ignore
+from meilisearch.models.index import IndexStats  # type: ignore
 
 from src.config import get_config
 from src.utils.logger import get_logger
@@ -117,7 +119,7 @@ class SearchEngine:
             self._index = self.client.get_index(self.index_name)
         return self._index
     
-    async def add_document(self, document: Dict[str, Any]) -> Dict:
+    async def add_document(self, document: Dict[str, Any]) -> TaskInfo:
         """
         Add a single document to the index
         
@@ -150,7 +152,7 @@ class SearchEngine:
             log.error(f"Failed to add document {document.get('id')}: {e}")
             raise
     
-    async def add_documents(self, documents: List[Dict[str, Any]]) -> Dict:
+    async def add_documents(self, documents: List[Dict[str, Any]]) -> TaskInfo:
         """
         Add multiple documents to the index (batch operation)
         
@@ -169,7 +171,7 @@ class SearchEngine:
             log.error(f"Failed to add documents: {e}")
             raise
     
-    async def update_document(self, document: Dict[str, Any]) -> Dict:
+    async def update_document(self, document: Dict[str, Any]) -> TaskInfo:
         """Update a single document"""
         try:
             index = self.get_index()
@@ -180,7 +182,7 @@ class SearchEngine:
             log.error(f"Failed to update document {document.get('id')}: {e}")
             raise
     
-    async def delete_document(self, document_id: str) -> Dict:
+    async def delete_document(self, document_id: str) -> TaskInfo:
         """Delete a document by ID"""
         try:
             index = self.get_index()
@@ -226,7 +228,7 @@ class SearchEngine:
             index = self.get_index()
             
             # Build search params
-            search_params = {
+            search_params: Dict[str, Any] = {
                 "limit": limit,
                 "offset": offset
             }
@@ -254,7 +256,7 @@ class SearchEngine:
             log.error(f"Search failed for query '{query}': {e}")
             raise
     
-    async def get_stats(self) -> Dict[str, Any]:
+    async def get_stats(self) -> IndexStats:
         """Get index statistics"""
         try:
             index = self.get_index()
@@ -264,7 +266,7 @@ class SearchEngine:
             log.error(f"Failed to get stats: {e}")
             raise
     
-    async def clear_index(self) -> Dict:
+    async def clear_index(self) -> TaskInfo:
         """Delete all documents from the index (use with caution!)"""
         try:
             index = self.get_index()
