@@ -1,0 +1,191 @@
+# ============================================================================
+# TELE-GOOGLE .gitignore
+# ============================================================================
+
+# ============================================================================
+# ENVIRONMENT & SECRETS
+# ============================================================================
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+
+# ============================================================================
+# PYTHON
+# ============================================================================
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# PEP 582
+__pypackages__/
+
+# Type checkers
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+
+# ============================================================================
+# DATA & STORAGE
+# ============================================================================
+# Telegram session files (sensitive!)
+data/sessions/*.session
+data/sessions/*.session-journal
+
+# Downloaded images
+data/images/*
+!data/images/.gitkeep
+
+# Meilisearch data
+data/meili_data/*
+!data/meili_data/.gitkeep
+
+# Keep the data directory structure
+!data/sessions/.gitkeep
+
+# Database dumps
+*.sql
+*.db
+*.sqlite
+*.sqlite3
+
+# ============================================================================
+# LOGS
+# ============================================================================
+logs/
+*.log
+*.log.*
+
+# ============================================================================
+# IDE & EDITORS
+# ============================================================================
+# VS Code
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# PyCharm
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# vim
+*.swp
+*.swo
+*~
+
+# ============================================================================
+# OS
+# ============================================================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+
+# Linux
+.directory
+.Trash-*
+
+# ============================================================================
+# DOCKER
+# ============================================================================
+# Don't ignore docker-compose.yml - we need it!
+# But ignore override files
+docker-compose.override.yml
+
+# ============================================================================
+# TEMPORARY FILES
+# ============================================================================
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+
+# ============================================================================
+# PROJECT SPECIFIC
+# ============================================================================
+# Test data (unless explicitly needed)
+test_messages.json
+
+# Local configuration overrides
+config.local.py
+
+# Migration temporary files
+alembic/versions/__pycache__/
