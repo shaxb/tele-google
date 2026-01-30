@@ -1,6 +1,20 @@
 """
 Logging Configuration for Tele-Google
 Provides easy-to-read, structured logging with Loguru
+
+The logger automatically captures:
+    - Module name (e.g., src.crawler, src.bot)
+    - Function name where log was called
+    - Line number
+    - Timestamp
+    - Log level
+
+Usage:
+    from src.utils.logger import get_logger
+    
+    log = get_logger(__name__)  # Pass __name__ to get proper module name
+    log.info("Starting process")
+    log.error("An error occurred", extra={"user_id": 123})
 """
 import sys
 from pathlib import Path
@@ -20,6 +34,9 @@ def setup_logger(log_level: str = "INFO", log_file: str = "logs/app.log"):
         - File output with rotation (10MB per file, keep 7 days)
         - Structured format with timestamp, level, module, message
         - Error logs saved separately
+        
+    Note:
+        Call this once at application startup before using get_logger()
     """
     # Remove default handler
     logger.remove()
@@ -34,7 +51,7 @@ def setup_logger(log_level: str = "INFO", log_file: str = "logs/app.log"):
         format=(
             "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
             "<level>{level: <8}</level> | "
-            "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> | "
+            "<cyan>{extra[module]}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> | "
             "<level>{message}</level>"
         ),
         level=log_level,
@@ -47,7 +64,7 @@ def setup_logger(log_level: str = "INFO", log_file: str = "logs/app.log"):
         format=(
             "{time:YYYY-MM-DD HH:mm:ss.SSS} | "
             "{level: <8} | "
-            "{name}:{function}:{line} | "
+            "{extra[module]}:{function}:{line} | "
             "{message}"
         ),
         level="DEBUG",  # Always log DEBUG to file
@@ -64,7 +81,7 @@ def setup_logger(log_level: str = "INFO", log_file: str = "logs/app.log"):
         format=(
             "{time:YYYY-MM-DD HH:mm:ss.SSS} | "
             "{level: <8} | "
-            "{name}:{function}:{line} | "
+            "{extra[module]}:{function}:{line} | "
             "{message}\n"
             "{exception}"
         ),
@@ -77,31 +94,55 @@ def setup_logger(log_level: str = "INFO", log_file: str = "logs/app.log"):
         enqueue=True,
     )
     
-    logger.info(f"Logger initialized - Level: {log_level}")
+    # Log initialization with proper module name
+    logger.bind(module="logger").info(f"Logger initialized - Level: {log_level}")
     return logger
 
 
-def get_logger(name: str = None):
+def get_logger(module_name: str = None):
     """
-    Get a logger instance
+    Get a logger instance bound to a specific module
     
     Args:
-        name: Logger name (usually __name__ of the module)
+        module_name: Name of the module (use __name__ from calling module)
     
     Returns:
-        Configured logger instance
+        Logger instance bound to the module name
+        
+    Example:
+        # In src/crawler.py
+        from src.utils.logger import get_logger
+        
+        log = get_logger(__name__)  # Will show 'src.crawler' in logs
+        log.info("Crawler started")
+        
+        # Output: 2026-01-30 12:00:00 | INFO | src.crawler:main:25 | Crawler started
     """
-    if name:
-        return logger.bind(name=name)
-    return logger
+    if module_name:
+        # Clean up module name for better readability
+        # __main__ -> script name, src.module -> module
+        if module_name == "__main__":
+            # Try to get the script name from sys.argv
+            import sys
+            import os
+            script_name = os.path.basename(sys.argv[0]).replace('.py', '')
+            return logger.bind(module=script_name)
+        else:
+            return logger.bind(module=module_name)
+    
+    # Fallback to 'app' if no module name provided
+    return logger.bind(module="app")
 
 
 # Usage examples for documentation
 if __name__ == "__main__":
     """Test logging configuration"""
     
-    # Setup logger
-    log = setup_logger(log_level="DEBUG")
+    # Setup logger first
+    setup_logger(log_level="DEBUG")
+    
+    # Get logger with module name
+    log = get_logger(__name__)
     
     # Test different log levels
     log.debug("This is a debug message - detailed information")
@@ -109,8 +150,27 @@ if __name__ == "__main__":
     log.warning("This is a warning - something to pay attention to")
     log.error("This is an error - something went wrong")
     
-    # Test with context
-    log.info("Processing message", extra={"channel": "@TestChannel", "msg_id": 12345})
+    # Demonstrate proper module naming in a real module
+    print("\n" + "="*60)
+    print("DEMONSTRATION: How to use in your modules")
+    print("="*60)
+    print("""
+    # In src/crawler.py:
+    from src.utils.logger import setup_logger, get_logger
+    
+    # Setup once at startup
+    setup_logger(log_level="INFO")
+    
+    # Get logger for this module
+    log = get_logger(__name__)  # Will show 'src.crawler' in logs
+    
+    # Use it
+    log.info("Crawler started")
+    log.error("Connection failed", extra={"channel": "@TestChannel"})
+    """)
+    
+    # Test with extra context
+    log.info("Processing message", channel="@TestChannel", msg_id=12345)
     
     # Test exception logging
     try:
@@ -118,4 +178,11 @@ if __name__ == "__main__":
     except Exception as e:
         log.exception("An error occurred while processing")
     
-    log.success("Logging test completed! ✓")
+    log.success("✓ Logging test completed!")
+    
+    # Show log file location
+    print("\n" + "="*60)
+    print(f"Logs saved to:")
+    print(f"  - Main log: logs/app.log")
+    print(f"  - Errors:   logs/error.log")
+    print("="*60)
