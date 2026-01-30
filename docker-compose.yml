@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  # Meilisearch - Search Engine
+  meilisearch:
+    image: getmeili/meilisearch:v1.6
+    container_name: tele-google-meilisearch
+    ports:
+      - "7700:7700"
+    environment:
+      - MEILI_MASTER_KEY=masterKey
+      - MEILI_ENV=development
+      - MEILI_NO_ANALYTICS=true
+    volumes:
+      - ./data/meili_data:/meili_data
+    restart: unless-stopped
+    networks:
+      - tele-google-network
+
+  # PostgreSQL - Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: tele-google-postgres
+    ports:
+      - "5433:5432"
+    environment:
+      - POSTGRES_DB=tele_google
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - tele-google-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  tele-google-network:
+    driver: bridge
