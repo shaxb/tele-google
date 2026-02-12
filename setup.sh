@@ -19,8 +19,8 @@ sudo apt update && sudo apt upgrade -y
 echo "🔧 Installing required packages..."
 sudo apt install -y \
     git \
-    python3.10 \
-    python3.10-venv \
+    python3 \
+    python3-venv \
     python3-pip \
     docker.io \
     docker-compose
@@ -48,7 +48,7 @@ cd /home/ubuntu/tele-google
 
 # Setup Python virtual environment
 echo "🐍 Creating Python virtual environment..."
-python3.10 -m venv venv
+python3 -m venv venv
 source venv/bin/activate
 
 echo "📚 Installing Python dependencies..."

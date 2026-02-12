@@ -2,7 +2,7 @@
 
 ## 📋 Prerequisites
 
-- AWS EC2 instance running Ubuntu 20.04+
+- AWS EC2 instance running Ubuntu 20.04+ (tested on Ubuntu 24.04)
 - SSH key configured: `~/.ssh/questpath-aws-key.pem`
 - Access to:
   - Telegram API credentials (https://my.telegram.org/apps)
