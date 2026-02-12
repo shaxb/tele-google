@@ -1,1 +1,1 @@
-# Bot initialization file
+"""Bot utilities — formatting, language, admin commands."""

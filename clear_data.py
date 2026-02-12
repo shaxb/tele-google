@@ -1,17 +1,18 @@
-# Clear all data from PostgreSQL
+"""Truncate the listings table. Use with caution."""
+
 import asyncio
 from loguru import logger
-from src.database.connection import init_db, get_session
 from sqlalchemy import text
+from src.database.connection import init_db, get_session
 
-async def clear_all():
-    """Drop all listing data and reset"""
+
+async def main() -> None:
     await init_db()
-    
     async with get_session() as session:
         await session.execute(text("TRUNCATE TABLE listings RESTART IDENTITY CASCADE;"))
         await session.commit()
-        logger.success("✅ PostgreSQL listings cleared")
+    logger.success("Listings table cleared")
+
 
 if __name__ == "__main__":
-    asyncio.run(clear_all())
+    asyncio.run(main())

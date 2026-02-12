@@ -1,1 +1,1 @@
-"""Utility functions and helpers"""
+"""Shared utilities — logging, channel file management."""

@@ -1,14 +1,4 @@
-"""
-AI Prompts for Tele-Google
-Two simple prompts:
-1. LISTING_CHECK - Is this a marketplace listing? (yes/no)
-2. RERANK - Given candidates, pick the most relevant ones for the user query
-"""
-
-
-# ============================================================================
-# LISTING CHECK PROMPT - Simple yes/no classification
-# ============================================================================
+"""AI prompts — listing classification and search reranking."""
 
 LISTING_CHECK_PROMPT = """You classify Telegram messages as marketplace listings or not.
 
@@ -24,10 +14,6 @@ NOT a listing:
 Respond with ONLY valid JSON:
 {"is_listing": true} or {"is_listing": false}"""
 
-
-# ============================================================================
-# RERANK PROMPT - Pick most relevant listings for user query
-# ============================================================================
 
 RERANK_PROMPT = """You are a marketplace search assistant for Uzbekistan.
 Users search in Uzbek, Russian, English, or mixed languages.
@@ -82,18 +68,6 @@ def create_listing_check_prompt(message_text: str) -> str:
 
 
 def create_rerank_prompt(query: str, candidates: list[dict]) -> str:
-    """Create user prompt for AI reranking.
-    
-    Args:
-        query: User's search query
-        candidates: List of candidate listings with index and raw_text
-    """
-    candidates_text = ""
-    for i, c in enumerate(candidates):
-        text_preview = c.get("raw_text", "")[:300]
-        candidates_text += f"\n[{i}] {text_preview}\n"
-    
-    return (
-        f"User query: {query}\n\n"
-        f"Candidate listings:\n{candidates_text}"
-    )
+    """Build user prompt for AI reranking."""
+    lines = [f"[{i}] {c.get('raw_text', '')[:300]}" for i, c in enumerate(candidates)]
+    return f"User query: {query}\n\nCandidate listings:\n" + "\n".join(lines)

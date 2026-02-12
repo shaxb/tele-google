@@ -1,45 +1,36 @@
-# Language preference management
+"""Per-user language preference management."""
 
-from typing import Optional, Dict
+from typing import Dict, Optional
 from src.i18n import get_i18n
 
-i18n = get_i18n()
+_i18n = get_i18n()
+_prefs: Dict[int, str] = {}
 
-# User language preferences (user_id -> lang_code)
-user_languages: Dict[int, str] = {}
+SUPPORTED = ("uz", "ru", "en")
 
 
 def get_user_language(user_id: int, telegram_lang: Optional[str] = None) -> str:
-    """Get user's preferred language (saved or detected)"""
-    # Check if user has manually selected language
-    if user_id in user_languages:
-        return user_languages[user_id]
-    
-    # Otherwise detect from Telegram settings
-    return i18n.detect_language(telegram_lang)
+    """Return saved preference for *user_id*, else detect from Telegram."""
+    if user_id in _prefs:
+        return _prefs[user_id]
+    return _i18n.detect_language(telegram_lang)
 
 
 def set_user_language(user_id: int, lang_code: str) -> bool:
-    """Save user language preference"""
-    if lang_code not in ['uz', 'ru', 'en']:
+    if lang_code not in SUPPORTED:
         return False
-    
-    user_languages[user_id] = lang_code
+    _prefs[user_id] = lang_code
     return True
 
 
+_LANG_NAMES = {"uz": "🇺🇿 O'zbek", "ru": "🇷🇺 Русский", "en": "🇬🇧 English"}
+_SUCCESS = {
+    "uz": "✅ Til o'zgartirildi: {name}",
+    "ru": "✅ Язык изменен: {name}",
+    "en": "✅ Language changed: {name}",
+}
+
+
 def get_language_success_message(lang_code: str) -> str:
-    """Get success message for language change"""
-    lang_names = {
-        'uz': "🇺🇿 O'zbek",
-        'ru': '🇷🇺 Русский',
-        'en': '🇬🇧 English'
-    }
-    
-    success_messages = {
-        'uz': f"✅ Til o'zgartirildi: {lang_names[lang_code]}",
-        'ru': f"✅ Язык изменен: {lang_names[lang_code]}",
-        'en': f"✅ Language changed: {lang_names[lang_code]}"
-    }
-    
-    return success_messages.get(lang_code, "✅ Language changed")
+    tpl = _SUCCESS.get(lang_code, "✅ Language changed: {name}")
+    return tpl.format(name=_LANG_NAMES.get(lang_code, lang_code))

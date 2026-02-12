@@ -1,21 +1,6 @@
-"""
-SQLAlchemy Database Models
-Simplified: pgvector embeddings + raw text storage
-"""
-from datetime import datetime
-from typing import Optional
-from sqlalchemy import (
-    BigInteger,
-    Boolean,
-    Column,
-    DateTime,
-    ForeignKey,
-    Integer,
-    String,
-    Text,
-    func,
-)
-from sqlalchemy.dialects.postgresql import JSONB
+"""SQLAlchemy database models."""
+
+from sqlalchemy import BigInteger, Boolean, Column, DateTime, ForeignKey, Integer, String, Text, func
 from pgvector.sqlalchemy import Vector
 from sqlalchemy.orm import declarative_base, relationship
 
@@ -24,7 +9,7 @@ Base = declarative_base()
 
 class TelegramSession(Base):
     __tablename__ = "telegram_sessions"
-    
+
     id = Column(Integer, primary_key=True, autoincrement=True)
     session_name = Column(String(100), unique=True, nullable=False, index=True)
     phone_number = Column(String(20), nullable=False)
@@ -33,13 +18,13 @@ class TelegramSession(Base):
     is_active = Column(Boolean, default=True, nullable=False)
     last_used_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=func.now(), nullable=False)
-    
+
     channels = relationship("MonitoredChannel", back_populates="session")
 
 
 class MonitoredChannel(Base):
     __tablename__ = "monitored_channels"
-    
+
     id = Column(Integer, primary_key=True, autoincrement=True)
     username = Column(String(100), unique=True, nullable=False, index=True)
     title = Column(String(255), nullable=True)
@@ -49,14 +34,13 @@ class MonitoredChannel(Base):
     session_id = Column(Integer, ForeignKey("telegram_sessions.id"), nullable=True)
     added_at = Column(DateTime, default=func.now(), nullable=False)
     last_scraped_at = Column(DateTime, nullable=True)
-    
+
     session = relationship("TelegramSession", back_populates="channels")
 
 
 class Listing(Base):
-    """Core listing: raw text + embedding for semantic search."""
     __tablename__ = "listings"
-    
+
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     source_channel = Column(Text, nullable=False, index=True)
     source_message_id = Column(BigInteger, nullable=False)
@@ -65,20 +49,14 @@ class Listing(Base):
     embedding = Column(Vector(1536), nullable=False)
     created_at = Column(DateTime, nullable=False, default=func.now(), index=True)
     indexed_at = Column(DateTime, nullable=False, default=func.now())
-    
-    def get_telegram_link(self) -> str:
-        channel = self.source_channel.lstrip('@')
-        return f"https://t.me/{channel}/{self.source_message_id}"
 
 
 class SearchAnalytics(Base):
     __tablename__ = "search_analytics"
-    
+
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(BigInteger, nullable=False, index=True)
     query_text = Column(Text, nullable=False)
-    filters_applied = Column(JSONB, nullable=True)
     results_count = Column(Integer, nullable=True)
-    clicked_result_id = Column(BigInteger, nullable=True)
     searched_at = Column(DateTime, default=func.now(), nullable=False)
     response_time_ms = Column(Integer, nullable=True)

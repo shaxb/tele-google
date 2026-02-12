@@ -77,8 +77,7 @@ A real-time search engine that indexes public Telegram marketplace channels and 
 
 ## 📖 Documentation
 
-- [PROJECT_GUIDE.md](PROJECT_GUIDE.md) - Complete architecture and development guide
-- [scatch-idea.md](scatch-idea.md) - Original project concept
+- [DEPLOYMENT.md](DEPLOYMENT.md) - Server deployment guide
 
 ## 🏗️ Architecture
 
@@ -121,16 +120,6 @@ BOT_TOKEN=your_bot_token
 BOT_ADMIN_USER_IDS=[your_user_id]
 ```
 
-## 🧪 Testing
-
-```bash
-# Run all tests
-pytest
-
-# Run with coverage
-pytest --cov=src
-```
-
 ## 📦 Project Structure
 
 ```
@@ -141,12 +130,21 @@ tele-google/
 │   ├── crawler.py            # Telethon message listener
 │   ├── search_engine.py      # pgvector search pipeline
 │   ├── bot.py                # Aiogram bot interface
-│   ├── config.py             # Configuration loader
+│   ├── config.py             # Pydantic settings loader
 │   ├── prompts.py            # AI prompt templates
 │   ├── i18n.py               # Multi-language support
-│   ├── database/             # Database models & repositories
-│   ├── bot_utils/            # Bot formatting utilities
-│   └── utils/                # Helper functions
+│   ├── database/
+│   │   ├── connection.py     # Async SQLAlchemy engine
+│   │   ├── models.py         # ORM models (Listing, Channel, etc.)
+│   │   └── repository.py     # Data-access layer
+│   ├── bot_utils/
+│   │   ├── admin.py          # Admin bot commands
+│   │   ├── formatters.py     # Result & UI formatting
+│   │   └── language.py       # Per-user language prefs
+│   ├── utils/
+│   │   ├── channels.py       # Channel-file management
+│   │   └── logger.py         # Loguru setup
+│   └── locales/              # en/ru/uz translation JSONs
 ├── migrations/               # Alembic database migrations
 ├── data/sessions/            # Telegram session files (gitignored)
 ├── logs/                     # Application logs (gitignored)
@@ -155,7 +153,7 @@ tele-google/
 ├── clear_data.py             # Database cleanup utility
 ├── run_bot.py                # Bot entry point
 ├── run_crawler.py            # Crawler entry point
-└── docker-compose.yml        # PostgreSQL service
+└── docker-compose.yml        # PostgreSQL + pgvector service
 ```
 
 ## 🎯 Roadmap
