@@ -22,12 +22,6 @@ aiogram==3.24.0
 openai==2.16.0
 
 # ============================================================================
-# SEARCH ENGINE
-# ============================================================================
-# Meilisearch Python client
-meilisearch==0.40.0
-
-# ============================================================================
 # DATABASE
 # ============================================================================
 # PostgreSQL adapter
@@ -35,6 +29,9 @@ psycopg2-binary==2.9.11
 
 # SQLAlchemy ORM
 sqlalchemy==2.0.46
+
+# pgvector extension for PostgreSQL vector operations
+pgvector==0.3.5
 
 # Alembic for database migrations
 alembic==1.18.3
@@ -61,21 +58,6 @@ asyncpg==0.31.0
 # ============================================================================
 # UTILITIES
 # ============================================================================
-# Date/time handling
-python-dateutil==2.9.0.post0
-
-# Image processing
-pillow==12.1.0
-
-# JSON validation
-jsonschema==4.26.0
-
-# Retry logic
-tenacity==9.1.2
-
-# Progress bars (already installed with other packages)
-tqdm>=4.65.0
-
 # ============================================================================
 # LOGGING & MONITORING
 # ============================================================================

@@ -1,0 +1,11 @@
+# Monitored Telegram Channels
+# Add one channel username per line (with or without @)
+
+@aksessuargatgetlar
+@TOSHKENT_BOZORIM_TELEFONS
+@Kvartira_toshkent_makler_arenda
+@ishchi_bor_kerak_toshkent
+@Telefon_Bozor_Malika_Bazar
+@Studentlarga_kvartira_bezmakler
+@moshina_bozorim
+@Nasiya_Malika_Bozor_Mudatli

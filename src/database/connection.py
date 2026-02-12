@@ -1,8 +1,6 @@
-"""
-Database Connection Management
-Handles async SQLAlchemy engine and session pooling
-"""
-from typing import AsyncGenerator
+# Database Connection Management
+# Handles async SQLAlchemy engine and session pooling
+
 from sqlalchemy.ext.asyncio import (
     create_async_engine,
     AsyncSession,
@@ -20,24 +18,16 @@ _engine = None
 _async_session_factory = None
 
 
+# Construct async PostgreSQL database URL
 def get_database_url() -> str:
-    """
-    Construct async PostgreSQL database URL
-    
-    Returns:
-        Database URL in asyncpg format
-    """
     config = get_config()
     db = config.database
-    
     return f"postgresql+asyncpg://{db.user}:{db.password}@{db.host}:{db.port}/{db.name}"
 
 
+# Initialize database engine and create tables
+# Call this once at application startup
 async def init_db() -> None:
-    """
-    Initialize database engine and create tables
-    Call this once at application startup
-    """
     global _engine, _async_session_factory
     
     if _engine is not None:
@@ -73,11 +63,9 @@ async def init_db() -> None:
     log.info("Database initialized successfully")
 
 
+# Close database connections
+# Call this at application shutdown
 async def close_db() -> None:
-    """
-    Close database connections
-    Call this at application shutdown
-    """
     global _engine, _async_session_factory
     
     if _engine is None:
@@ -91,41 +79,12 @@ async def close_db() -> None:
     log.info("Database connections closed")
 
 
-async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    """
-    Get database session (async context manager)
-    
-    Usage:
-        async with get_db() as db:
-            result = await db.execute(select(TelegramSession))
-            sessions = result.scalars().all()
-    
-    Yields:
-        AsyncSession: Database session
-    """
-    if _async_session_factory is None:
-        raise RuntimeError("Database not initialized. Call init_db() first.")
-    
-    async with _async_session_factory() as session:
-        try:
-            yield session
-            await session.commit()
-        except Exception as e:
-            await session.rollback()
-            log.error(f"Database session error: {e}")
-            raise
-        finally:
-            await session.close()
-
-
-async def get_session() -> AsyncSession:
-    """
-    Get a new database session (for direct use)
-    Remember to close the session after use!
-    
-    Returns:
-        AsyncSession: Database session
-    """
+# Get a new database session (async context manager)
+# Usage: async with get_session() as session:
+#            result = await session.execute(select(Model))
+#            await session.commit()
+# You must explicitly call session.commit() to persist changes
+def get_session() -> AsyncSession:
     if _async_session_factory is None:
         raise RuntimeError("Database not initialized. Call init_db() first.")
     

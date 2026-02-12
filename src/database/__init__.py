@@ -1,24 +1,23 @@
 """
 Database package for Tele-Google
-Handles PostgreSQL connections and models
+Schema-Free Adaptive Architecture (v2.0)
 """
-from src.database.connection import get_db, init_db, close_db, get_session
+from src.database.connection import init_db, close_db, get_session
 from src.database.models import (
     TelegramSession,
     MonitoredChannel,
-    IndexingLog,
+    Listing,
     SearchAnalytics,
     Base
 )
 
 __all__ = [
-    "get_db",
     "init_db", 
     "close_db",
     "get_session",
     "TelegramSession",
     "MonitoredChannel",
-    "IndexingLog",
+    "Listing",
     "SearchAnalytics",
     "Base"
 ]

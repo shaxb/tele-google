@@ -1,103 +1,127 @@
 ================================================================================
 TELE-GOOGLE: TELEGRAM MARKETPLACE SEARCH ENGINE
 ================================================================================
-Version: 1.0
-Last Updated: January 30, 2026
-Status: Architecture Finalized - Implementation Pending
+Version: 2.0 - Schema-Free Adaptive Architecture
+Last Updated: February 1, 2026
+Status: Phase 3 Complete - Implementing Adaptive Layer
 
 ================================================================================
 TABLE OF CONTENTS
 ================================================================================
 1. PROJECT VISION
-2. ARCHITECTURE OVERVIEW
+2. ARCHITECTURE OVERVIEW - ADAPTIVE DESIGN
 3. TECH STACK & RATIONALE
 4. CORE COMPONENTS
-5. DATA FLOW
-6. AI PIPELINE DESIGN
-7. DATABASE SCHEMA
+5. DATA FLOW - EMBEDDING-FIRST APPROACH
+6. AI PIPELINE DESIGN - UNIVERSAL EXTRACTION
+7. DATABASE SCHEMA - SCHEMA-FREE DESIGN
 8. IMPLEMENTATION ROADMAP
 9. DEVELOPMENT SETUP
 10. TESTING STRATEGY
-11. FUTURE ENHANCEMENTS
+11. SCALING & FUTURE-PROOFING
 
 ================================================================================
 1. PROJECT VISION
 ================================================================================
 
 WHAT:
-A real-time search engine that indexes public Telegram marketplace channels
-and makes their content searchable through a Telegram bot.
+A future-proof, schema-free search engine that indexes Telegram marketplace 
+channels and adapts automatically to any content without manual schema updates.
 
 WHY:
-Telegram channels post unstructured marketplace messages in mixed Uzbek/Russian.
-Users can't search across multiple channels efficiently. This solves that.
+Telegram channels post diverse, evolving content (phones, apartments, cars, jobs,
+pets, food, services, etc.) in mixed Uzbek/Russian/English. Traditional rigid 
+schemas require endless maintenance as new product features emerge (5G, AI chips,
+satellite connectivity, etc.). This system adapts automatically.
 
 WHO:
-Target users: People in Uzbekistan searching for items (phones, apartments, jobs)
-across fragmented marketplace channels.
+Target users: People in Uzbekistan searching for ANY items across fragmented
+marketplace channels, with zero-maintenance backend that never needs schema migrations.
 
 KEY FEATURES:
-- Multi-channel indexing (simultaneous monitoring)
-- Natural language search in Uzbek/Russian
-- Typo-tolerant search ("ayfon" → "iPhone")
-- Category-aware filtering (price ranges, conditions, locations)
+- Multi-channel indexing (simultaneous monitoring of 100+ channels)
+- Natural language search in Uzbek/Russian/English (mixed)
+- Semantic understanding via embeddings (not just keyword matching)
+- Auto-discovery of new categories and features (no predefined schemas)
+- Typo-tolerant search ("ayfon" → "iPhone", "Chilanzor" → "Chilonzor")
+- Future-proof: Works for products/features that don't exist yet
 - Rich results with images and direct links to original messages
 
+CORE PHILOSOPHY:
+❌ DON'T: Predefine rigid schemas that need constant updates
+✅ DO: Store embeddings + flexible attributes, let AI discover structure on-the-fly
+✅ Zero schema migrations, infinite adaptability
+
 ================================================================================
-2. ARCHITECTURE OVERVIEW
+2. ARCHITECTURE OVERVIEW - ADAPTIVE DESIGN
 ================================================================================
 
+EMBEDDING-FIRST ARCHITECTURE:
 ┌─────────────────────────────────────────────────────────────────────┐
-│                        TELEGRAM CHANNELS                             │
-│                 (@MalikaBozor, @ToshkentMarket, etc.)               │
+│                     TELEGRAM CHANNELS (Any Topic)                    │
+│        (@MalikaBozor, @ToshkentMarket, @PetShopUz, etc.)           │
 └────────────────────────────┬────────────────────────────────────────┘
                              │
                              ▼
                   ┌──────────────────────┐
                   │   TELETHON CRAWLER   │
                   │   (Multi-session)    │
-                  │   Listens to new     │
-                  │   messages 24/7      │
+                  │   Monitors 100+      │
+                  │   channels 24/7      │
                   └──────────┬───────────┘
                              │
                              ▼
-                  ┌──────────────────────┐
-                  │    AI PIPELINE       │
-                  │  ┌────────────────┐  │
-                  │  │ 1. ROUTER AI   │  │ ← Classifies category
-                  │  │ (GPT-4o-mini)  │  │
-                  │  └────────┬───────┘  │
-                  │           │          │
-                  │           ▼          │
-                  │  ┌────────────────┐  │
-                  │  │ 2. SPECIALIST  │  │ ← Extracts structured data
-                  │  │    AI          │  │
-                  │  │ (GPT-4o-mini)  │  │
-                  │  └────────────────┘  │
-                  └──────────┬───────────┘
+                  ┌──────────────────────────────┐
+                  │    UNIVERSAL AI EXTRACTOR    │
+                  │  ┌────────────────────────┐  │
+                  │  │  GPT-4o-mini           │  │
+                  │  │  Discovers structure   │  │
+                  │  │  Extracts ANY fields   │  │
+                  │  │  No predefined schema  │  │
+                  │  └────────────────────────┘  │
+                  │  ┌────────────────────────┐  │
+                  │  │  OpenAI Embeddings     │  │
+                  │  │  text-embedding-3-small│  │
+                  │  │  1536-dim vector       │  │
+                  │  └────────────────────────┘  │
+                  └──────────┬───────────────────┘
                              │
-                             ▼
-              ┌──────────────────────────────┐
-              │       MEILISEARCH            │
-              │   (Docker Container)         │
-              │   - Typo tolerance           │
-              │   - Fast filtering           │
-              │   - Multi-field search       │
-              └──────────────┬───────────────┘
-                             │
-                             ▼
-                  ┌──────────────────────┐
-                  │   POSTGRESQL DB      │
-                  │   - Session tracking │
-                  │   - Message state    │
-                  │   - Analytics        │
-                  └──────────────────────┘
-                             ▲
-                             │
-                             │
-              ┌──────────────┴───────────────┐
-              │      AIOGRAM BOT             │
-              │   - /search command          │
+              ┌──────────────┴──────────────┐
+              │                             │
+              ▼                             ▼
+┌──────────────────────────┐    ┌──────────────────────┐
+│   POSTGRESQL + pgvector  │    │    MEILISEARCH       │
+│   - Embeddings (vector)  │    │    - Fast keyword    │
+│   - Attributes (JSONB)   │    │    - Typo tolerance  │
+│   - Flexible storage     │    │    - Dynamic facets  │
+│   - Semantic search      │    │                      │
+└──────────────┬───────────┘    └──────────┬───────────┘
+               │                           │
+               └─────────┬─────────────────┘
+                         │
+                         ▼
+              ┌──────────────────────────┐
+              │   HYBRID SEARCH ENGINE   │
+              │   Strategy A: Semantic   │
+              │   Strategy B: Keyword    │
+              │   Strategy C: Hybrid     │
+              │   → Merge & Rerank       │
+              └──────────┬───────────────┘
+                         │
+                         ▼
+              ┌──────────────────────────┐
+              │     AIOGRAM BOT          │
+              │   - /search command      │
+              │   - Inline queries       │
+              │   - Result pagination    │
+              └──────────────────────────┘
+
+KEY PRINCIPLES:
+1. NO RIGID SCHEMAS: Attributes stored as flexible JSONB
+2. EMBEDDING-FIRST: Semantic vectors enable meaning-based search
+3. MULTI-STRATEGY: Combine semantic + keyword + filters
+4. AUTO-ADAPTIVE: New features/categories discovered automatically
+5. FUTURE-PROOF: Zero migrations, works forever
               │   - Query parsing (AI)       │
               │   - Result formatting        │
               │   - Future: Inline mode      │
@@ -394,113 +418,214 @@ Output: {"category": "real_estate", "subcategory": "apartment", "confidence": 0.
 Input: "Grafik dizayner kerak, masofaviy, 600$"
 Output: {"category": "jobs", "subcategory": "full_time", "confidence": 0.85}
 
-Now classify this message:
-{message_text}
+================================================================================
+6. AI PIPELINE DESIGN - UNIVERSAL EXTRACTION
+================================================================================
+
+ADAPTIVE EXTRACTION ARCHITECTURE:
+
+┌──────────────────────────────────────────────────────────────────┐
+│ SINGLE-STAGE UNIVERSAL EXTRACTOR (Replaces Router + Specialist) │
+├──────────────────────────────────────────────────────────────────┤
+│ Model: GPT-4o-mini (JSON mode)                                  │
+│ Purpose: Extract ALL information without predefined schemas     │
+│ Temperature: 0.2                                                 │
+│ Tokens: ~600-800 per message                                    │
+│ Cost: ~$0.0001 per message                                      │
+└──────────────────────────────────────────────────────────────────┘
+
+UNIVERSAL EXTRACTION PROMPT:
 ```
-
-SPECIALIST AI PROMPT TEMPLATES (Category-Specific):
-
-┌─────────────────────────────────────────────────────────────────────┐
-│ ELECTRONICS > SMARTPHONE                                             │
-├─────────────────────────────────────────────────────────────────────┤
-│ Extract smartphone details using THESE EXACT field names:            │
-│                                                                      │
-│ Required fields:                                                     │
-│ - brand: Apple, Samsung, Xiaomi, Oppo, Vivo, etc.                   │
-│ - model: iPhone 15, Galaxy S24, Redmi Note 13, etc.                 │
-│                                                                      │
-│ Optional fields (use null if not mentioned):                         │
-│ - storage: 64GB, 128GB, 256GB, 512GB, 1TB                           │
-│ - ram: 4GB, 6GB, 8GB, 12GB, 16GB                                    │
-│ - color: black, white, blue, red, green, gray, gold, etc.           │
-│ - condition: new, excellent, good, fair, poor                       │
-│ - price: number only (extract from $, сум, so'm)                    │
-│ - currency: USD, UZS                                                 │
-│                                                                      │
-│ Normalization rules:                                                 │
-│ - "zo'r holatda", "a'lo" → excellent                                │
-│ - "yaxshi", "normal" → good                                         │
-│ - "qora" → black, "oq" → white                                      │
-│                                                                      │
-│ Return ONLY valid JSON.                                              │
-└─────────────────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────────────┐
-│ REAL_ESTATE > APARTMENT                                              │
-├─────────────────────────────────────────────────────────────────────┤
-│ Extract apartment details using THESE EXACT field names:             │
-│                                                                      │
-│ Required fields:                                                     │
-│ - property_type: apartment, studio, penthouse                       │
-│ - rooms: number (1, 2, 3, 4, 5+)                                    │
-│                                                                      │
-│ Optional fields:                                                     │
-│ - floor: number (extract from "5/9" → 5)                            │
-│ - total_floors: number (extract from "5/9" → 9)                     │
-│ - area_sqm: number (square meters)                                  │
-│ - district: Chilonzor, Yunusobod, Sergeli, Mirzo-Ulugbek, etc.      │
-│ - price_type: sale, monthly_rent, daily_rent                        │
-│ - price: number only                                                 │
-│ - currency: USD, UZS                                                 │
-│ - has_furniture: true/false                                          │
-│ - has_parking: true/false                                            │
-│                                                                      │
-│ Normalization:                                                       │
-│ - "sotiladi" → sale                                                 │
-│ - "ijaraga", "ijara" → monthly_rent                                 │
-│ - "kunlik" → daily_rent                                             │
-│                                                                      │
-│ Return ONLY valid JSON.                                              │
-└─────────────────────────────────────────────────────────────────────┘
-
-(Additional templates for other categories stored in src/prompts/)
-
-QUERY PARSING (User Search Intent):
-```
-You are a search query parser for a marketplace.
-
-User is searching in category: {detected_category}
-
-Extract search intent and filters from their query.
+You are extracting information from marketplace messages.
+Extract ALL structured information - don't limit to predefined fields.
 
 Return ONLY valid JSON:
 {
-  "search_text": "<main search terms>",
-  "filters": {
-    "<field_name>": <value>,
-    "min_<field>": <number>,
-    "max_<field>": <number>
+  "attributes": {
+    // Extract ANY attributes you find
+    // Common: brand, model, size, color, year, condition, etc.
+    // Emerging: 5G, AI_chip, gaming, satellite, halal, pet_friendly
+    // Normalize when obvious: "qora" → "black", "zo'r" → "excellent"
   },
-  "sort_by": "price_asc|price_desc|date_desc",
-  "intent": "buy|sell|compare"
+  "price_min": <number or null>,
+  "price_max": <number or null>,
+  "currency": "USD|UZS|RUB|null",
+  "location": "district/city or null",
+  "phone_numbers": ["..."] or null,
+  "language": "uz|ru|en|mixed",
+  "category_guess": "best guess category"
 }
 
-Understanding Uzbek comparison phrases:
-- "dan kam", "dan arzon", "gacha" → max_price
-- "dan ko'p", "dan baland", "dan yuqori" → min_price
-- "orasida" → price range (both min and max)
+Examples:
 
-Example:
-User: "iPhone 15 qora 128GB 800$ dan kam"
+Message: "iPhone 15 Pro Max 256GB qora zo'r holatda 950$"
 Output: {
-  "search_text": "iPhone 15",
-  "filters": {
+  "attributes": {
+    "brand": "Apple",
+    "model": "iPhone 15 Pro Max",
+    "storage": "256GB",
     "color": "black",
-    "storage": "128GB",
-    "max_price": 800
+    "condition": "excellent"
   },
-  "sort_by": "price_asc",
-  "intent": "buy"
+  "price_min": 950,
+  "price_max": null,
+  "currency": "USD",
+  "category_guess": "electronics"
 }
 
-Now parse: {user_query}
+Message: "Gaming laptop ASUS RTX 4090 32GB RAM RGB keyboard 2500$"
+Output: {
+  "attributes": {
+    "brand": "ASUS",
+    "GPU": "RTX 4090",
+    "RAM": "32GB",
+    "gaming": true,
+    "RGB_keyboard": true
+  },
+  "price_min": 2500,
+  "currency": "USD",
+  "category_guess": "electronics"
+}
+
+Message: "it uchun to'shak katta o'lcham yumshoq 50$"
+Output: {
+  "attributes": {
+    "item_type": "bed",
+    "animal": "dog",
+    "size": "large",
+    "material_quality": "soft"
+  },
+  "price_min": 50,
+  "currency": "USD",
+  "category_guess": "pets"
+}
+
+Now extract from: {message_text}
+```
+
+EMBEDDING GENERATION:
+```
+Model: text-embedding-3-small
+Dimensions: 1536
+Cost: $0.00002 per message
+
+Purpose: Semantic search (meaning-based, not keyword)
+- Enables multilingual search (uz/ru/en)
+- Handles synonyms automatically
+- Works for ANY content (known or unknown categories)
+```
+
+QUERY PARSING (Adaptive):
+```
+Parse user search query without predefined category assumptions.
+
+Return JSON:
+{
+  "intent": "buy|sell|compare",
+  "main_keywords": ["..."],
+  "filters": {
+    // ANY attributes user mentions
+    // Could be: brand, 5G, gaming, halal, pet-friendly, etc.
+  },
+  "price_range": {"min": null, "max": null},
+  "sort_preference": "price_asc|price_desc|date_desc|relevance"
+}
+
+Examples:
+
+Query: "5G telefon 1000$ gacha"
+Output: {
+  "main_keywords": ["telefon", "5G"],
+  "filters": {"5G": true},
+  "price_range": {"max": 1000},
+  "sort_preference": "price_asc"
+}
+
+Query: "gaming laptop kuchli video karta"
+Output: {
+  "main_keywords": ["laptop", "gaming"],
+  "filters": {"gaming": true},
+  "sort_preference": "relevance"
+}
+
+Query: "halal restoran Chilonzor"
+Output: {
+  "main_keywords": ["restoran", "halal"],
+  "filters": {"halal": true, "location": "Chilonzor"},
+  "sort_preference": "relevance"
+}
 ```
 
 ================================================================================
-7. DATABASE SCHEMA
+7. DATABASE SCHEMA - SCHEMA-FREE DESIGN
 ================================================================================
 
-PostgreSQL Tables:
+PostgreSQL Tables (One-time setup, never needs migration):
+
+┌─────────────────────────────────────────────────────────────────────┐
+│ TABLE: listings                                                      │
+├─────────────────────────────────────────────────────────────────────┤
+│ Core listing storage with flexible attributes (FUTURE-PROOF)        │
+│                                                                      │
+│ -- Identity                                                          │
+│ id                BIGSERIAL PRIMARY KEY                              │
+│ source_channel    TEXT NOT NULL                                      │
+│ source_message_id BIGINT NOT NULL                                    │
+│                                                                      │
+│ -- Content (immutable)                                               │
+│ raw_text          TEXT NOT NULL                                      │
+│ has_media         BOOLEAN DEFAULT FALSE                              │
+│ -- NOTE: No media_urls needed - we share original via t.me links    │
+│                                                                      │
+│ -- Semantic search (THE CORE!)                                       │
+│ embedding         vector(1536) NOT NULL                              │
+│                                                                      │
+│ -- Flexible attributes (NEVER needs schema changes)                  │
+│ attributes        JSONB NOT NULL DEFAULT '{}'                        │
+│ -- Can contain ANYTHING:                                             │
+│ -- 2024: {"brand": "Apple", "model": "iPhone 13"}                    │
+│ -- 2025: {"brand": "Apple", "5G": true, "model": "iPhone 15"}       │
+│ -- 2026: {"brand": "Apple", "AI_chip": "A18", "satellite": true}    │
+│ -- 2027+: {whatever_new_features_exist}                              │
+│                                                                      │
+│ -- Common fast filters (auto-extracted)                              │
+│ price_min         NUMERIC                                            │
+│ price_max         NUMERIC                                            │
+│ currency          TEXT                                               │
+│ location          TEXT                                               │
+│ phone_numbers     TEXT[]                                             │
+│                                                                      │
+│ -- Metadata                                                          │
+│ language          TEXT                  -- uz, ru, en, mixed         │
+│ category_guess    TEXT                  -- Auto-discovered           │
+│ created_at        TIMESTAMPTZ DEFAULT NOW()                          │
+│ indexed_at        TIMESTAMPTZ DEFAULT NOW()                          │
+│                                                                      │
+│ UNIQUE(source_channel, source_message_id)                            │
+└─────────────────────────────────────────────────────────────────────┘
+
+INDEXES (One-time setup):
+```sql
+-- Semantic search (pgvector)
+CREATE INDEX idx_embedding ON listings 
+    USING ivfflat (embedding vector_cosine_ops) 
+    WITH (lists = 100);
+
+-- Dynamic attribute search
+CREATE INDEX idx_attributes_gin ON listings 
+    USING gin(attributes jsonb_path_ops);
+
+-- Fast price filtering
+CREATE INDEX idx_price ON listings (price_min, price_max) 
+    WHERE price_min IS NOT NULL;
+
+-- Recency sorting
+CREATE INDEX idx_created ON listings (created_at DESC);
+
+-- Location filtering
+CREATE INDEX idx_location ON listings (location) 
+    WHERE location IS NOT NULL;
+```
 
 ┌─────────────────────────────────────────────────────────────────────┐
 │ TABLE: telegram_sessions                                             │
@@ -523,10 +648,10 @@ PostgreSQL Tables:
 │ Tracks which channels are being monitored                            │
 │                                                                      │
 │ id                SERIAL PRIMARY KEY                                 │
-│ username          VARCHAR(100) UNIQUE NOT NULL  (@MalikaBozor)       │
+│ username          VARCHAR(100) UNIQUE NOT NULL                       │
 │ title             VARCHAR(255)                                       │
 │ is_active         BOOLEAN DEFAULT true                               │
-│ last_message_id   BIGINT DEFAULT 0  -- For duplicate detection       │
+│ last_message_id   BIGINT DEFAULT 0                                   │
 │ total_indexed     INTEGER DEFAULT 0                                  │
 │ session_id        INTEGER REFERENCES telegram_sessions(id)           │
 │ added_at          TIMESTAMP DEFAULT NOW()                            │
@@ -534,77 +659,71 @@ PostgreSQL Tables:
 └─────────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────────┐
-│ TABLE: indexing_log                                                  │
-├─────────────────────────────────────────────────────────────────────┤
-│ Tracks indexing operations for debugging and analytics              │
-│                                                                      │
-│ id                SERIAL PRIMARY KEY                                 │
-│ channel_id        INTEGER REFERENCES monitored_channels(id)          │
-│ message_id        BIGINT NOT NULL                                    │
-│ document_id       VARCHAR(255) UNIQUE  -- Meilisearch doc ID         │
-│ category          VARCHAR(50)                                        │
-│ subcategory       VARCHAR(50)                                        │
-│ indexed_at        TIMESTAMP DEFAULT NOW()                            │
-│ router_tokens     INTEGER  -- AI cost tracking                       │
-│ specialist_tokens INTEGER                                            │
-│ processing_time_ms INTEGER                                           │
-│ status            VARCHAR(20)  -- success, failed, skipped           │
-│ error_message     TEXT                                               │
-└─────────────────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────────────┐
 │ TABLE: search_analytics                                              │
 ├─────────────────────────────────────────────────────────────────────┤
-│ Tracks user searches for improvement and analytics                  │
+│ Tracks user searches for analytics and future learning              │
 │                                                                      │
 │ id                SERIAL PRIMARY KEY                                 │
-│ user_id           BIGINT NOT NULL  -- Telegram user ID               │
+│ user_id           BIGINT NOT NULL                                    │
 │ query_text        TEXT NOT NULL                                      │
-│ detected_category VARCHAR(50)                                        │
-│ filters_applied   JSONB  -- Extracted filters                        │
+│ filters_applied   JSONB                                              │
 │ results_count     INTEGER                                            │
-│ clicked_result    VARCHAR(255)  -- Which result they clicked         │
+│ clicked_result_id BIGINT                                             │
 │ searched_at       TIMESTAMP DEFAULT NOW()                            │
 │ response_time_ms  INTEGER                                            │
 └─────────────────────────────────────────────────────────────────────┘
 
-MEILISEARCH INDEX STRUCTURE:
+MEILISEARCH INDEX STRUCTURE (Flexible):
 
-Index name: "marketplace"
+Index name: "listings"
 
 Document structure:
 {
   "id": "string",                    // Format: {channel}_{message_id}
-  "category": "string",              // electronics, real_estate, etc.
-  "subcategory": "string",           // smartphone, apartment, etc.
-  "item": "string",                  // Human-readable item name
-  
-  "data": {                          // Flexible nested object
-    // Category-specific fields with consistent naming
-    // Examples:
-    // Electronics: {brand, model, storage, ram, color, condition}
-    // Real Estate: {rooms, floor, area_sqm, district}
+  "raw_text": "string",              // Original message
+  "attributes": {                    // FLEXIBLE - any fields!
+    // Auto-discovered attributes
+    // 2024: "brand", "model", "storage"
+    // 2025+: "5G", "AI_chip", "gaming", "halal", etc.
   },
-  
-  "price": number,                   // Normalized to single currency
-  "currency": "string",              // USD, UZS
-  
-  "searchable_text": "string",       // All searchable content combined
-  
-  "images": ["url1", "url2"],        // Array of image URLs
-  "message_link": "string",          // https://t.me/channel/msgid
-  "channel": "string",               // @MalikaBozor
-  "posted_at": "timestamp",          // ISO 8601 format
-  
-  "extra_attributes": {}             // For unknown fields
+  "price_min": number,
+  "price_max": number,
+  "currency": "string",
+  "location": "string",
+  "category_guess": "string",
+  "created_at": timestamp,
+  "source_channel": "string"
 }
 
 Index settings:
-- filterableAttributes: ["category", "subcategory", "price", "data.*", "channel"]
-- searchableAttributes: ["item", "searchable_text", "data", "category"]
-- sortableAttributes: ["price", "posted_at"]
-- typoTolerance: enabled (maxTypos: 2)
-- ranking rules: ["words", "typo", "proximity", "attribute", "sort", "exactness"]
+```json
+{
+  "searchableAttributes": [
+    "raw_text",
+    "attributes"
+  ],
+  "filterableAttributes": [
+    "price_min",
+    "price_max",
+    "currency",
+    "location",
+    "category_guess",
+    "created_at",
+    "attributes"
+  ],
+  "sortableAttributes": [
+    "price_min",
+    "created_at"
+  ],
+  "typoTolerance": {
+    "enabled": true,
+    "minWordSizeForTypos": {
+      "oneTypo": 4,
+      "twoTypos": 8
+    }
+  }
+}
+```
 
 ================================================================================
 8. IMPLEMENTATION ROADMAP
@@ -614,6 +733,7 @@ STATUS LEGEND:
 [ ] Not Started
 [~] In Progress  
 [✓] Completed
+[D] Deprecated (removed)
 
 PHASE 1: PROJECT SETUP
 ├─ [✓] Architecture finalized
@@ -631,59 +751,69 @@ PHASE 1: PROJECT SETUP
     ├─ [✓] Create src/config.py
     └─ [✓] Environment validation
 
-PHASE 2: DATABASE LAYER
-├─ [ ] PostgreSQL setup
-│   ├─ [ ] Create database migrations
-│   ├─ [ ] Implement schema (4 tables)
-│   └─ [ ] Create database models (SQLAlchemy)
-├─ [ ] Meilisearch setup
-│   ├─ [ ] Initialize index
-│   ├─ [ ] Configure filterable/searchable attributes
-│   └─ [ ] Test basic indexing/searching
-└─ [ ] Database utilities
-    ├─ [ ] Connection pooling
-    └─ [ ] Error handling
+PHASE 2: DATABASE LAYER (SCHEMA-FREE)
+├─ [✓] PostgreSQL setup
+│   ├─ [✓] Create initial migrations
+│   ├─ [D] Old rigid schema (4 tables) - DEPRECATED
+│   └─ [~] New schema-free design (listings table with JSONB)
+├─ [✓] pgvector extension
+│   ├─ [~] Install pgvector in PostgreSQL
+│   ├─ [~] Create vector indexes
+│   └─ [~] Test embedding storage/retrieval
+├─ [✓] Meilisearch setup
+│   ├─ [✓] Initialize index
+│   ├─ [~] Configure for dynamic attributes
+│   └─ [~] Test flexible attribute search
+└─ [~] Database utilities
+    ├─ [✓] Connection pooling
+    └─ [~] Update models for JSONB attributes
 
-PHASE 3: AI PIPELINE
-├─ [ ] Create category schemas (src/schemas.py)
-│   ├─ [ ] Define electronics subcategories
-│   ├─ [ ] Define real_estate subcategories
-│   ├─ [ ] Define vehicles subcategories
-│   └─ [ ] Define jobs subcategories
-├─ [ ] Router AI (src/ai_parser.py)
-│   ├─ [ ] Write router prompt template
-│   ├─ [ ] Implement classification function
-│   ├─ [ ] Add confidence threshold handling
-│   └─ [ ] Test with sample messages
-├─ [ ] Specialist AI (src/ai_parser.py)
-│   ├─ [ ] Write specialist prompt templates (per category)
-│   ├─ [ ] Implement extraction function
-│   ├─ [ ] Add field normalization
-│   └─ [ ] Test extraction accuracy
-└─ [ ] Query Parser AI (src/ai_parser.py)
-    ├─ [ ] Write query parsing prompt
-    ├─ [ ] Implement filter extraction
-    ├─ [ ] Handle Uzbek comparison phrases
-    └─ [ ] Test with sample queries
+PHASE 3: ADAPTIVE AI PIPELINE
+├─ [✓] Deprecated rigid schemas (src/schemas.py removed)
+├─ [✓] Universal Extractor (src/ai_parser.py)
+│   ├─ [✓] Write universal extraction prompt
+│   ├─ [✓] Implement adaptive extraction function
+│   ├─ [✓] Auto-normalize common values
+│   └─ [✓] Test with diverse messages (9/10 passed)
+├─ [✓] Embedding Generation (src/embeddings.py)
+│   ├─ [✓] Integrate OpenAI embeddings API
+│   ├─ [✓] Batch processing for efficiency
+│   └─ [✓] Test semantic similarity
+├─ [✓] Adaptive Query Parser (src/ai_parser.py)
+│   ├─ [✓] Write flexible query parsing prompt
+│   ├─ [✓] Implement dynamic filter extraction
+│   ├─ [✓] Handle Uzbek/Russian comparison phrases
+│   └─ [✓] Test with diverse queries (5/5 passed)
+└─ [✓] Hybrid Search Engine (src/search_engine.py)
+    ├─ [✓] Strategy A: Semantic vector search
+    ├─ [✓] Strategy B: Keyword + filters (Meilisearch)
+    ├─ [✓] Strategy C: Hybrid combination
+    ├─ [✓] Result merging and deduplication
+    └─ [✓] Reranking logic
 
 PHASE 4: CRAWLER
-├─ [ ] Telethon setup (src/crawler.py)
-│   ├─ [ ] Session management (multi-account)
-│   ├─ [ ] Channel joining logic
-│   └─ [ ] Event handler for new messages
-├─ [ ] Message processing
-│   ├─ [ ] Text extraction
-│   ├─ [ ] Media download (images)
-│   ├─ [ ] Metadata extraction (timestamp, link)
-│   └─ [ ] Duplicate detection
-├─ [ ] Integration with AI pipeline
-│   ├─ [ ] Send message to Router AI
-│   ├─ [ ] Send to Specialist AI
-│   └─ [ ] Error handling (retry logic)
-└─ [ ] Indexing integration
-    ├─ [ ] Build Meilisearch document
-    ├─ [ ] Index to Meilisearch
-    └─ [ ] Update PostgreSQL tracking
+├─ [✓] Telethon setup (src/crawler.py)
+│   ├─ [✓] Session management (multi-account)
+│   ├─ [✓] Channel joining logic
+│   └─ [✓] Event handler for new messages
+├─ [✓] Message processing
+│   ├─ [✓] Text extraction
+│   ├─ [✓] Media detection (check has_media flag)
+│   ├─ [✓] Metadata extraction (timestamp, message_id)
+│   ├─ [✓] Duplicate detection
+│   └─ [✓] NOTE: No media download needed - we share original Telegram messages
+├─ [✓] Integration with AI pipeline
+│   ├─ [✓] Universal Extractor (adaptive extraction)
+│   ├─ [✓] Embedding generation (semantic search)
+│   └─ [✓] Error handling (retry logic)
+├─ [✓] Indexing integration
+│   ├─ [✓] Build Meilisearch document
+│   ├─ [✓] Index to Meilisearch
+│   └─ [✓] Store in PostgreSQL with message link
+└─ [✓] Management scripts
+    ├─ [✓] Add/remove channels (manage_crawler.py)
+    ├─ [✓] Backfill historical messages
+    └─ [✓] Multi-session management
 
 PHASE 5: SEARCH LAYER
 ├─ [ ] Meilisearch wrapper (src/search.py)

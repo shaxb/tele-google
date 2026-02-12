@@ -1,0 +1,104 @@
+{
+  "commands": {
+    "start": {
+      "title": "Welcome to Tele-Google!",
+      "description": "I help you find listings from Uzbek Telegram channels.",
+      "how_to": "How to search:",
+      "just_send": "Just send me what you're looking for!",
+      "examples_title": "Examples:",
+      "examples": [
+        "iPhone 15 black",
+        "2 bedroom apartment Chilonzor",
+        "gaming laptop under $800",
+        "dog bed"
+      ],
+      "commands_title": "Commands:",
+      "footer": "Search in Uzbek, Russian, or English!"
+    },
+    "help": {
+      "title": "Tele-Google Help",
+      "how_to_search": "How to Search:",
+      "understand": "Simply type what you're looking for. I understand:",
+      "features": [
+        "Product names (iPhone, MacBook, etc.)",
+        "Categories (apartment, car, etc.)",
+        "Price limits (under $800, over $500)",
+        "Attributes (black, new, 16GB, etc.)",
+        "Locations (Chilonzor, Sergeli, etc.)"
+      ],
+      "tips_title": "Search Tips:",
+      "tips": [
+        "Use natural language: \"iPhone 15 black under $800\"",
+        "Combine attributes: \"gaming laptop 16GB RAM\"",
+        "Filter by location: \"apartment Yunusobod\""
+      ],
+      "languages_title": "Supported Languages:",
+      "commands_title": "Commands:"
+    },
+    "search": {
+      "title": "Search Mode",
+      "prompt": "What are you looking for?",
+      "hint": "Send your query (e.g., \"iPhone 15 black under $800\")"
+    },
+    "stats": {
+      "title": "Your Statistics",
+      "total_searches": "Total searches:",
+      "recent_title": "Recent searches:",
+      "no_recent": "No recent searches",
+      "results": "results"
+    }
+  },
+  "search": {
+    "searching": "Searching...",
+    "found": "Found",
+    "result": "result",
+    "results": "results",
+    "query": "Query:",
+    "no_results": {
+      "title": "No results found",
+      "tips_title": "Tips:",
+      "tips": [
+        "Try different keywords",
+        "Use simpler search terms",
+        "Check spelling",
+        "Search in Uzbek, Russian, or English"
+      ]
+    },
+    "showing": "Showing",
+    "of": "of",
+    "page": "Page",
+    "new_search": "New Search",
+    "filters": "Filters"
+  },
+  "result": {
+    "contact_price": "Contact for price",
+    "view_telegram": "View in Telegram"
+  },
+  "filters": {
+    "title": "Search Analysis",
+    "search_text": "Search text:",
+    "category": "Category:",
+    "intent": "Intent:",
+    "filters_title": "Filters:",
+    "sort": "Sort:"
+  },
+  "errors": {
+    "no_query": "Please enter a search query.",
+    "no_user": "Could not identify user.",
+    "search_failed": "Search failed",
+    "search_error": "An error occurred while searching. Please try again later.",
+    "stats_failed": "Failed to fetch statistics. Please try again later.",
+    "search_expired": "Search expired. Please search again.",
+    "invalid_page": "Invalid page",
+    "forward_failed": "Could not forward original message",
+    "missing_source": "Missing source information in database",
+    "bot_admin_hint": "Make sure the bot is added to the source channel as admin.",
+    "unexpected": "An unexpected error occurred. Please try again."
+  },
+  "buttons": {
+    "previous": "Previous",
+    "next": "Next",
+    "new_search": "New Search",
+    "filters": "Filters"
+  }
+}

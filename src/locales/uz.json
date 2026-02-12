@@ -1,0 +1,104 @@
+{
+  "commands": {
+    "start": {
+      "title": "Tele-Google'ga xush kelibsiz!",
+      "description": "Men O'zbekiston Telegram kanallaridan e'lonlar topishga yordam beraman.",
+      "how_to": "Qanday qidirish kerak:",
+      "just_send": "Nimani qidirayotganingizni yozing!",
+      "examples_title": "Misollar:",
+      "examples": [
+        "iPhone 15 qora",
+        "2 xonali kvartira Chilonzor",
+        "gaming laptop 800$ dan kam",
+        "it uchun to'shak"
+      ],
+      "commands_title": "Buyruqlar:",
+      "footer": "O'zbek, Rus yoki Ingliz tilida qidiring!"
+    },
+    "help": {
+      "title": "Tele-Google Yordam",
+      "how_to_search": "Qanday qidirish:",
+      "understand": "Nimani qidirayotganingizni yozing. Men tushunamanL",
+      "features": [
+        "Mahsulot nomlari (iPhone, MacBook, va h.k.)",
+        "Kategoriyalar (kvartira, mashina, va h.k.)",
+        "Narx chegaralari (800$ dan kam, 500$ dan ko'p)",
+        "Xususiyatlar (qora, yangi, 16GB, va h.k.)",
+        "Joylashuv (Chilonzor, Sergeli, va h.k.)"
+      ],
+      "tips_title": "Qidiruv maslahatlari:",
+      "tips": [
+        "Oddiy til: \"iPhone 15 qora 800$ dan kam\"",
+        "Xususiyatlarni birlashtiring: \"gaming laptop 16GB RAM\"",
+        "Joylashuv bo'yicha filter: \"kvartira Yunusobod\""
+      ],
+      "languages_title": "Qo'llab-quvvatlanadigan tillar:",
+      "commands_title": "Buyruqlar:"
+    },
+    "search": {
+      "title": "Qidiruv rejimi",
+      "prompt": "Nimani qidiryapsiz?",
+      "hint": "So'rovingizni yuboring (masalan, \"iPhone 15 qora 800$ dan kam\")"
+    },
+    "stats": {
+      "title": "Sizning statistikangiz",
+      "total_searches": "Jami qidiruvlar:",
+      "recent_title": "So'nggi qidiruvlar:",
+      "no_recent": "So'nggi qidiruvlar yo'q",
+      "results": "natija"
+    }
+  },
+  "search": {
+    "searching": "Qidirilmoqda...",
+    "found": "Topildi",
+    "result": "natija",
+    "results": "natija",
+    "query": "So'rov:",
+    "no_results": {
+      "title": "Natija topilmadi",
+      "tips_title": "Maslahatlar:",
+      "tips": [
+        "Boshqa kalit so'zlarni sinab ko'ring",
+        "Oddiyroq qidiruv so'zlarini ishlating",
+        "Imloni tekshiring",
+        "O'zbek, Rus yoki Ingliz tilida qidiring"
+      ]
+    },
+    "showing": "Ko'rsatilmoqda",
+    "of": "dan",
+    "page": "Sahifa",
+    "new_search": "Yangi qidiruv",
+    "filters": "Filterlar"
+  },
+  "result": {
+    "contact_price": "Narx uchun bog'laning",
+    "view_telegram": "Telegramda ko'rish"
+  },
+  "filters": {
+    "title": "Qidiruv tahlili",
+    "search_text": "Qidiruv matni:",
+    "category": "Kategoriya:",
+    "intent": "Maqsad:",
+    "filters_title": "Filterlar:",
+    "sort": "Saralash:"
+  },
+  "errors": {
+    "no_query": "Iltimos, qidiruv so'rovini kiriting.",
+    "no_user": "Foydalanuvchini aniqlab bo'lmadi.",
+    "search_failed": "Qidiruv muvaffaqiyatsiz",
+    "search_error": "Qidirishda xatolik yuz berdi. Keyinroq qayta urinib ko'ring.",
+    "stats_failed": "Statistikani olishda xatolik. Keyinroq qayta urinib ko'ring.",
+    "search_expired": "Qidiruv muddati tugadi. Iltimos, qaytadan qidiring.",
+    "invalid_page": "Noto'g'ri sahifa",
+    "forward_failed": "Asl xabarni yo'naltirish imkonsiz",
+    "missing_source": "Ma'lumotlar bazasida manba ma'lumotlari yo'q",
+    "bot_admin_hint": "Botni manba kanaliga admin sifatida qo'shganingizga ishonch hosil qiling.",
+    "unexpected": "Kutilmagan xatolik yuz berdi. Qaytadan urinib ko'ring."
+  },
+  "buttons": {
+    "previous": "Orqaga",
+    "next": "Keyingisi",
+    "new_search": "Yangi qidiruv",
+    "filters": "Filterlar"
+  }
+}
