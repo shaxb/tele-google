@@ -17,13 +17,15 @@ sudo apt update && sudo apt upgrade -y
 
 # Install dependencies
 echo "🔧 Installing required packages..."
-sudo apt install -y \
-    git \
-    python3 \
-    python3-venv \
-    python3-pip \
-    docker.io \
-    docker-compose
+
+# Check if Docker is already installed
+if command -v docker &> /dev/null; then
+    echo "✅ Docker already installed"
+    sudo apt install -y git python3 python3-venv python3-pip
+else
+    echo "Installing Docker and dependencies..."
+    sudo apt install -y git python3 python3-venv python3-pip docker.io docker-compose
+fi
 
 # Setup Docker permissions
 echo "🐳 Configuring Docker..."
