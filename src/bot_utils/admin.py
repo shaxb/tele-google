@@ -1,5 +1,6 @@
 """Admin-only bot commands: channel management and backfill."""
 
+import shutil
 from functools import wraps
 from pathlib import Path
 from typing import List
@@ -42,8 +43,15 @@ async def _run_backfill(channel_username: str, limit: int = 50) -> int:
     from telethon import TelegramClient
     from src.crawler import TelegramCrawler
 
-    session_path = str(Path("data/sessions/default_session"))
-    client = TelegramClient(session_path, config.telegram.api_id, config.telegram.api_hash)
+    src_session = Path("data/sessions/default_session.session")
+    if not src_session.exists():
+        raise RuntimeError("No Telegram session found — authenticate on the server first")
+
+    # Copy the session file so we don't conflict with the crawler's SQLite lock
+    tmp_session = Path("data/sessions/_backfill_tmp")
+    shutil.copy2(src_session, tmp_session.with_suffix(".session"))
+
+    client = TelegramClient(str(tmp_session), config.telegram.api_id, config.telegram.api_hash)
     await client.connect()  # type: ignore[misc]
     if not await client.is_user_authorized():  # type: ignore[misc]
         raise RuntimeError("Telegram session expired — re-authenticate on the server")
@@ -54,6 +62,9 @@ async def _run_backfill(channel_username: str, limit: int = 50) -> int:
         return await crawler.backfill_channel(channel_username, limit=limit)
     finally:
         await client.disconnect()  # type: ignore[misc]
+        # Clean up temp session files
+        for ext in (".session", ".session-journal"):
+            tmp_session.with_suffix(ext).unlink(missing_ok=True)
 
 
 # ---------------------------------------------------------------------------
