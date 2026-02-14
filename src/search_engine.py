@@ -51,7 +51,7 @@ class SearchEngine:
                 "has_media": listing.has_media,
                 "created_at": listing.created_at.isoformat() if listing.created_at else None,
                 "similarity_score": float(sim),
-                "metadata": listing.metadata,
+                "metadata": listing.item_metadata,
                 "price": listing.price,
                 "currency": listing.currency,
             }

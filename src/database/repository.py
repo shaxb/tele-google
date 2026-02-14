@@ -99,7 +99,7 @@ class ListingRepository:
                 has_media=has_media,
                 embedding=embedding,
                 created_at=created_at or datetime.utcnow(),
-                metadata=metadata,
+                item_metadata=metadata,
                 price=price,
                 currency=currency,
             )

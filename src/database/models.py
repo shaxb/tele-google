@@ -48,7 +48,7 @@ class Listing(Base):
     raw_text = Column(Text, nullable=False)
     has_media = Column(Boolean, default=False, nullable=False)
     embedding = Column(Vector(1536), nullable=False)
-    metadata = Column(JSONB, nullable=True)
+    item_metadata = Column("metadata", JSONB, nullable=True)
     price = Column(Float, nullable=True, index=True)
     currency = Column(String(10), nullable=True)
     created_at = Column(DateTime, nullable=False, default=func.now(), index=True)
