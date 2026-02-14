@@ -7,7 +7,7 @@ Watches channels.txt for hot-reload every 30 s.
 import asyncio
 from datetime import datetime
 from pathlib import Path
-from typing import Any, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set
 
 from loguru import logger
 from telethon import TelegramClient, events
@@ -28,6 +28,7 @@ class TelegramCrawler:
         self.config = get_config()
         self.clients: List[TelegramClient] = []
         self.active_channels: Set[str] = set()
+        self._chat_id_to_username: Dict[int, str] = {}
         self.ai_parser = get_ai_parser()
         self.embedding_gen = get_embedding_generator()
         self._channels_mtime = 0.0
@@ -84,8 +85,10 @@ class TelegramCrawler:
         for idx, username in enumerate(channels):
             client = self.clients[idx % len(self.clients)]
             try:
-                await client.get_entity(username)
+                entity = await client.get_entity(username)
                 self.active_channels.add(username)
+                if hasattr(entity, "id"):
+                    self._chat_id_to_username[entity.id] = username
                 logger.success(f"Joined {username}")
             except Exception as e:
                 logger.error(f"Failed to join {username}: {e}")
@@ -115,6 +118,8 @@ class TelegramCrawler:
                     await self.process_message(event)
 
                 self.active_channels.add(username)
+                if hasattr(entity, "id"):
+                    self._chat_id_to_username[entity.id] = username
                 logger.success(f"Added {username} (hot-reload)")
             except Exception as e:
                 logger.error(f"Failed to add {username}: {e}")
@@ -127,10 +132,15 @@ class TelegramCrawler:
         chat = await event.get_chat()
         if not chat:
             return None
+        # Prefer our own mapping (always stores @username from channels.txt)
+        chat_id = getattr(chat, "id", None)
+        if chat_id and chat_id in self._chat_id_to_username:
+            return self._chat_id_to_username[chat_id]
+        # Fallback for channels added dynamically
         if hasattr(chat, "username") and chat.username:
             u = chat.username
             return f"@{u}" if not u.startswith("@") else u
-        return str(chat.id) if hasattr(chat, "id") else None
+        return str(chat_id) if chat_id else None
 
     async def process_message(self, event: events.NewMessage.Event) -> None:
         """text → duplicate check → is_listing? → embed → store"""
