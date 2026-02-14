@@ -4,9 +4,10 @@ User sends query → embed → pgvector → AI rerank → return results.
 """
 
 import asyncio
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from aiogram import Bot, Dispatcher, Router, F
+from sqlalchemy import delete
 from aiogram.filters import Command, CommandStart
 from aiogram.types import Message, CallbackQuery, InaccessibleMessage
 from aiogram.enums import ParseMode, ChatAction
@@ -17,7 +18,7 @@ from loguru import logger
 
 from src.config import get_config
 from src.database import init_db, get_session
-from src.database.models import SearchAnalytics
+from src.database.models import Listing, SearchAnalytics
 from src.search_engine import get_search_engine
 from src.i18n import get_i18n
 from src.bot_utils.formatters import (
@@ -182,6 +183,32 @@ async def handle_noop(callback: CallbackQuery):
 
 
 # ---------------------------------------------------------------------------
+# Daily cleanup — remove listings older than 30 days
+# ---------------------------------------------------------------------------
+
+DAYS_TO_KEEP = 30
+CLEANUP_INTERVAL = 86400  # 24 hours in seconds
+
+
+async def _cleanup_old_listings():
+    """Delete listings older than DAYS_TO_KEEP days. Runs in a loop every 24h."""
+    while True:
+        try:
+            cutoff = datetime.utcnow() - timedelta(days=DAYS_TO_KEEP)
+            async with get_session() as session:
+                result = await session.execute(
+                    delete(Listing).where(Listing.created_at < cutoff)
+                )
+                await session.commit()
+                deleted = result.rowcount
+            if deleted:
+                logger.info(f"Cleanup: removed {deleted} listings older than {DAYS_TO_KEEP} days")
+        except Exception as e:
+            logger.error(f"Cleanup error: {e}")
+        await asyncio.sleep(CLEANUP_INTERVAL)
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
@@ -194,8 +221,10 @@ async def main():
     dp.include_router(admin_router)
     dp.include_router(router)
 
+    cleanup_task = asyncio.create_task(_cleanup_old_listings())
     logger.success("Bot started!")
     try:
         await dp.start_polling(bot)
     finally:
+        cleanup_task.cancel()
         await bot.session.close()
