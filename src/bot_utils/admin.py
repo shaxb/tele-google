@@ -1,7 +1,5 @@
 """Admin-only bot commands: channel management and backfill."""
 
-import os
-import time
 from functools import wraps
 from pathlib import Path
 from typing import List
@@ -37,33 +35,25 @@ def admin_only(func):
 
 
 # ---------------------------------------------------------------------------
-# Backfill helper (creates a temporary Telethon client)
+# Backfill helper (reuses the existing authenticated session)
 # ---------------------------------------------------------------------------
 
 async def _run_backfill(channel_username: str, limit: int = 50) -> int:
     from telethon import TelegramClient
     from src.crawler import TelegramCrawler
 
-    sessions_dir = Path("data/sessions")
-    sessions_dir.mkdir(parents=True, exist_ok=True)
-    temp_session = str(sessions_dir / f"temp_backfill_{int(time.time())}")
+    session_path = str(Path("data/sessions/default_session"))
+    client = TelegramClient(session_path, config.telegram.api_id, config.telegram.api_hash)
+    await client.connect()  # type: ignore[misc]
+    if not await client.is_user_authorized():  # type: ignore[misc]
+        raise RuntimeError("Telegram session expired — re-authenticate on the server")
 
-    client = TelegramClient(temp_session, config.telegram.api_id, config.telegram.api_hash)
+    crawler = TelegramCrawler()
+    crawler.clients = [client]
     try:
-        await client.connect()  # type: ignore[misc]
-        if not await client.is_user_authorized():  # type: ignore[misc]
-            await client.start(phone=config.telegram.phone)  # type: ignore[misc]
-
-        crawler = TelegramCrawler()
-        crawler.clients = [client]
         return await crawler.backfill_channel(channel_username, limit=limit)
     finally:
-        client.disconnect()  # type: ignore[unused-coroutine]
-        for ext in ("", ".session", "-journal"):
-            try:
-                os.remove(f"{temp_session}{ext}")
-            except FileNotFoundError:
-                pass
+        await client.disconnect()  # type: ignore[misc]
 
 
 # ---------------------------------------------------------------------------

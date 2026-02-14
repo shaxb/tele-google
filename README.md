@@ -194,3 +194,10 @@ For questions or suggestions, open an issue on GitHub.
 ---
 
 **Status**: ✅ Ready for Deployment (MVP Complete)
+
+
+
+sudo journalctl -u tele-google-bot -f       # live bot logs
+sudo journalctl -u tele-google-crawler -f    # live crawler logs
+sudo systemctl restart tele-google-bot       # restart bot
+sudo systemctl restart tele-google-crawler   # restart crawler
