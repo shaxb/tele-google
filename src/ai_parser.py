@@ -30,10 +30,16 @@ class AIParser:
             logger.error(f"OpenAI error: {e}")
             return None
 
-    def is_listing(self, text: str) -> bool:
-        """Return True if *text* looks like a marketplace listing."""
+    def classify_and_extract(self, text: str) -> Optional[Dict[str, Any]]:
+        """Classify text and extract metadata if it's a listing.
+
+        Returns the metadata dict (with price, currency, category, etc.)
+        if it IS a listing, or None if it is not.
+        """
         result = self._call(LISTING_CHECK_PROMPT, create_listing_check_prompt(text), temperature=0.1)
-        return bool(result and result.get("is_listing"))
+        if not result or not result.get("is_listing"):
+            return None
+        return result.get("metadata") or {}
 
     def rerank(self, query: str, candidates: List[Dict[str, Any]]) -> List[int]:
         """Return ordered indices of the most relevant candidates for *query*."""

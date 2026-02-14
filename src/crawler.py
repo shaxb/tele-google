@@ -157,7 +157,8 @@ class TelegramCrawler:
             return
 
         try:
-            if not self.ai_parser.is_listing(raw_text):
+            metadata = self.ai_parser.classify_and_extract(raw_text)
+            if metadata is None:
                 return
 
             embedding = self.embedding_gen.generate(raw_text)
@@ -172,9 +173,11 @@ class TelegramCrawler:
                 has_media=bool(message.media),
                 embedding=embedding,
                 created_at=msg_date,
+                metadata=metadata,
             )
+            price_info = f" | ${metadata.get('price', '?')}" if metadata.get("price") else ""
             await ChannelRepository.update_stats(channel_id, message.id)
-            logger.success(f"Indexed message {message.id} from {channel_id}")
+            logger.success(f"Indexed message {message.id} from {channel_id}{price_info}")
 
         except Exception as e:
             logger.error(f"Failed to process message {message.id}: {e}", exc_info=True)

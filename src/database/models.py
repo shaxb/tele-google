@@ -1,6 +1,7 @@
 """SQLAlchemy database models."""
 
-from sqlalchemy import BigInteger, Boolean, Column, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import BigInteger, Boolean, Column, DateTime, Float, ForeignKey, Integer, String, Text, func
+from sqlalchemy.dialects.postgresql import JSONB
 from pgvector.sqlalchemy import Vector
 from sqlalchemy.orm import declarative_base, relationship
 
@@ -47,6 +48,9 @@ class Listing(Base):
     raw_text = Column(Text, nullable=False)
     has_media = Column(Boolean, default=False, nullable=False)
     embedding = Column(Vector(1536), nullable=False)
+    metadata = Column(JSONB, nullable=True)
+    price = Column(Float, nullable=True, index=True)
+    currency = Column(String(10), nullable=True)
     created_at = Column(DateTime, nullable=False, default=func.now(), index=True)
     indexed_at = Column(DateTime, nullable=False, default=func.now())
 

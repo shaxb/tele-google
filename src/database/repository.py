@@ -83,7 +83,14 @@ class ListingRepository:
         has_media: bool,
         embedding: List[float],
         created_at: Optional[datetime] = None,
+        metadata: Optional[dict] = None,
     ) -> Listing:
+        price = None
+        currency = None
+        if metadata:
+            p = metadata.get("price")
+            price = float(p) if p is not None else None
+            currency = metadata.get("currency")
         async with get_session() as session:
             listing = Listing(
                 source_channel=source_channel,
@@ -92,6 +99,9 @@ class ListingRepository:
                 has_media=has_media,
                 embedding=embedding,
                 created_at=created_at or datetime.utcnow(),
+                metadata=metadata,
+                price=price,
+                currency=currency,
             )
             session.add(listing)
             await session.commit()
