@@ -1,6 +1,6 @@
 """SQLAlchemy database models."""
 
-from sqlalchemy import BigInteger, Boolean, Column, DateTime, Float, ForeignKey, Integer, String, Text, func
+from sqlalchemy import BigInteger, Boolean, Column, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB
 from pgvector.sqlalchemy import Vector
 from sqlalchemy.orm import declarative_base, relationship
@@ -41,6 +41,9 @@ class MonitoredChannel(Base):
 
 class Listing(Base):
     __tablename__ = "listings"
+    __table_args__ = (
+        UniqueConstraint("source_channel", "source_message_id", name="uq_listing_channel_message"),
+    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     source_channel = Column(Text, nullable=False, index=True)
@@ -51,8 +54,30 @@ class Listing(Base):
     item_metadata = Column("metadata", JSONB, nullable=True)
     price = Column(Float, nullable=True, index=True)
     currency = Column(String(10), nullable=True)
+    # Pipeline traceability
+    message_link = Column(Text, nullable=True)
+    classification_confidence = Column(Float, nullable=True)
+    processing_time_ms = Column(Integer, nullable=True)
+    raw_ai_response = Column(Text, nullable=True)
+    # Deal detection
+    deal_score = Column(Float, nullable=True)  # negative = below market
     created_at = Column(DateTime, nullable=False, default=func.now(), index=True)
     indexed_at = Column(DateTime, nullable=False, default=func.now())
+
+
+class User(Base):
+    """Telegram bot users — persisted for analytics and preferences."""
+    __tablename__ = "users"
+
+    telegram_id = Column(BigInteger, primary_key=True)
+    username = Column(String(100), nullable=True)
+    first_name = Column(String(100), nullable=True)
+    last_name = Column(String(100), nullable=True)
+    language_code = Column(String(10), nullable=True)  # from Telegram
+    preferred_language = Column(String(10), nullable=True)  # user-selected
+    first_seen_at = Column(DateTime, default=func.now(), nullable=False)
+    last_active_at = Column(DateTime, default=func.now(), nullable=False)
+    total_searches = Column(Integer, default=0, nullable=False)
 
 
 class SearchAnalytics(Base):
@@ -62,5 +87,7 @@ class SearchAnalytics(Base):
     user_id = Column(BigInteger, nullable=False, index=True)
     query_text = Column(Text, nullable=False)
     results_count = Column(Integer, nullable=True)
+    result_listing_ids = Column(JSONB, nullable=True)  # [id1, id2, ...]
+    clicked_listing_id = Column(BigInteger, nullable=True)
     searched_at = Column(DateTime, default=func.now(), nullable=False)
     response_time_ms = Column(Integer, nullable=True)

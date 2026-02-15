@@ -19,7 +19,7 @@ class SearchEngine:
         self.ai_parser = get_ai_parser()
 
     async def search(self, query_text: str, limit: int = 5) -> List[Dict[str, Any]]:
-        query_embedding = self.embedding_gen.generate(query_text)
+        query_embedding = await self.embedding_gen.generate(query_text)
         if not query_embedding:
             logger.error("Failed to generate query embedding")
             return []
@@ -28,7 +28,7 @@ class SearchEngine:
         if not candidates:
             return []
 
-        indices = self.ai_parser.rerank(query_text, candidates)
+        indices = await self.ai_parser.rerank(query_text, candidates)
         return [candidates[i] for i in indices[:limit]]
 
     async def _find_similar(self, embedding: List[float], candidate_limit: int = 50) -> List[Dict[str, Any]]:

@@ -48,6 +48,7 @@ class DatabaseConfig(BaseSettings):
 class BotConfig(BaseSettings):
     token: str
     admin_user_ids: List[int] = Field(default_factory=list)
+    log_channel_id: Optional[int] = None
 
     model_config = SettingsConfigDict(env_prefix="BOT_", env_file=".env", extra="ignore")
 

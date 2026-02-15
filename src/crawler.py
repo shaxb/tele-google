@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional, Set
 
 from loguru import logger
 from telethon import TelegramClient, events
+from telethon.tl.functions.channels import JoinChannelRequest
 from telethon.tl.types import Message as TelegramMessage
 
 from src.ai_parser import get_ai_parser
@@ -18,6 +19,8 @@ from src.config import get_config
 from src.database.connection import init_db
 from src.database.repository import ChannelRepository, ListingRepository, SessionRepository
 from src.embeddings import get_embedding_generator
+from src.notifier import get_notifier
+from src.search_engine import get_search_engine
 from src.utils.channels import load_channels, get_file_mtime
 
 SESSIONS_DIR = Path("data/sessions")
@@ -86,9 +89,14 @@ class TelegramCrawler:
             client = self.clients[idx % len(self.clients)]
             try:
                 entity = await client.get_entity(username)
+                # Actually join/subscribe so we receive new messages
+                try:
+                    await client(JoinChannelRequest(entity))  # type: ignore[arg-type]
+                except Exception:
+                    pass  # Already joined or can't join — still try to monitor
                 self.active_channels.add(username)
                 if hasattr(entity, "id"):
-                    self._chat_id_to_username[entity.id] = username
+                    self._chat_id_to_username[entity.id] = username  # type: ignore[union-attr]
                 logger.success(f"Joined {username}")
             except Exception as e:
                 logger.error(f"Failed to join {username}: {e}")
@@ -112,14 +120,18 @@ class TelegramCrawler:
             client = self.clients[len(self.active_channels) % len(self.clients)]
             try:
                 entity = await client.get_entity(username)
+                try:
+                    await client(JoinChannelRequest(entity))  # type: ignore[arg-type]
+                except Exception:
+                    pass
 
                 @client.on(events.NewMessage(chats=[entity]))
-                async def handler(event: events.NewMessage.Event) -> None:
+                async def handler(event: events.NewMessage.Event, _u=username) -> None:
                     await self.process_message(event)
 
                 self.active_channels.add(username)
                 if hasattr(entity, "id"):
-                    self._chat_id_to_username[entity.id] = username
+                    self._chat_id_to_username[entity.id] = username  # type: ignore[union-attr]
                 logger.success(f"Added {username} (hot-reload)")
             except Exception as e:
                 logger.error(f"Failed to add {username}: {e}")
@@ -153,20 +165,33 @@ class TelegramCrawler:
         if not raw_text:
             return
 
+        notifier = get_notifier()
+        notifier.count("messages_seen")
+
         if await ListingRepository.exists(channel_id, message.id):
             return
 
         try:
-            metadata = self.ai_parser.classify_and_extract(raw_text)
-            if metadata is None:
+            result = await self.ai_parser.classify_and_extract(raw_text)
+            if result is None:
+                notifier.count("messages_skipped")
                 return
 
-            embedding = self.embedding_gen.generate(raw_text)
+            metadata = result["metadata"]
+            confidence = result["confidence"]
+            raw_ai_response = result["raw_response"]
+            processing_time_ms = result["processing_time_ms"]
+
+            embedding = await self.embedding_gen.generate(raw_text)
             if not embedding:
                 return
 
+            # Build message link
+            channel_clean = channel_id.lstrip("@") if channel_id.startswith("@") else channel_id
+            message_link = f"https://t.me/{channel_clean}/{message.id}"
+
             msg_date = message.date.replace(tzinfo=None) if message.date else datetime.utcnow()
-            await ListingRepository.create(
+            listing = await ListingRepository.create(
                 source_channel=channel_id,
                 source_message_id=message.id,
                 raw_text=raw_text,
@@ -174,13 +199,56 @@ class TelegramCrawler:
                 embedding=embedding,
                 created_at=msg_date,
                 metadata=metadata,
+                message_link=message_link,
+                classification_confidence=confidence,
+                processing_time_ms=processing_time_ms,
+                raw_ai_response=raw_ai_response,
             )
-            price_info = f" | ${metadata.get('price', '?')}" if metadata.get("price") else ""
             await ChannelRepository.update_stats(channel_id, message.id)
-            logger.success(f"Indexed message {message.id} from {channel_id}{price_info}")
+
+            title = metadata.get("title", "?")  # type: ignore[union-attr]
+            price_info = f" | ${metadata.get('price', '?')}" if metadata.get("price") else ""
+            logger.success(f"Indexed message {message.id} from {channel_id}{price_info} ({confidence:.0%} conf, {processing_time_ms}ms)")
+
+            await notifier.listing(
+                channel=channel_id,
+                title=title,
+                price=metadata.get("price"),  # type: ignore[union-attr]
+                currency=metadata.get("currency"),  # type: ignore[union-attr]
+                category=metadata.get("category"),  # type: ignore[union-attr]
+                confidence=confidence,
+                processing_time_ms=processing_time_ms,
+                message_link=message_link,
+                metadata=metadata,
+            )
+
+            # Deal detection — if listing has price + currency, compare to market
+            listing_price = metadata.get("price")  # type: ignore[union-attr]
+            listing_currency = metadata.get("currency")  # type: ignore[union-attr]
+            if listing_price and listing_currency and embedding:
+                try:
+                    deal = await get_search_engine().evaluate_deal(
+                        embedding=embedding,
+                        price=float(listing_price),
+                        currency=listing_currency,
+                    )
+                    if deal:
+                        await ListingRepository.update_deal_score(listing.id, deal["deviation"])  # type: ignore[arg-type]
+                        if deal["is_deal"]:
+                            await notifier.deal(
+                                title=title,
+                                price=float(listing_price),
+                                currency=listing_currency,
+                                median=deal["median_price"],
+                                deviation=deal["deviation"],
+                            )
+                            logger.info(f"🔥 Deal detected: {title} — {abs(deal['deviation'])*100:.0f}% below median")
+                except Exception as e:
+                    logger.warning(f"Deal evaluation failed: {e}")
 
         except Exception as e:
             logger.error(f"Failed to process message {message.id}: {e}", exc_info=True)
+            await notifier.error("process_message", e)
 
     # ------------------------------------------------------------------
     # Monitoring loop
@@ -238,11 +306,14 @@ class TelegramCrawler:
 
             async for message in client.iter_messages(entity, limit=limit, min_id=min_id):  # type: ignore[arg-type]
                 if message.message and message.message.strip():
-                    await self.process_message(_FakeEvent(message, entity))  # type: ignore[arg-type]
-                    indexed += 1
+                    try:
+                        await self.process_message(_FakeEvent(message, entity))  # type: ignore[arg-type]
+                        indexed += 1
+                    except Exception as e:
+                        logger.warning(f"Backfill skip message {message.id}: {e}")
                     await asyncio.sleep(0.5)
 
-            logger.success(f"Backfill done: {indexed} messages from {channel_username}")
+            logger.success(f"Backfill done: {indexed} messages indexed from {channel_username}")
         except Exception as e:
             logger.error(f"Backfill failed: {e}", exc_info=True)
 
@@ -254,6 +325,7 @@ class TelegramCrawler:
 
     async def start(self) -> None:
         """Full startup: DB → clients → channels → monitor."""
+        notifier = get_notifier()
         try:
             logger.info("=" * 60)
             logger.info("TELEGRAM CRAWLER — Starting")
@@ -261,11 +333,17 @@ class TelegramCrawler:
             await init_db()
             await self.initialize_clients()
             await self.join_channels()
+            await notifier.startup("Crawler")
+            await notifier.start()
             await self.start_monitoring()
         except KeyboardInterrupt:
+            await notifier.shutdown("Crawler")
+            await notifier.stop()
             await self.stop()
         except Exception as e:
             logger.error(f"Crawler failed: {e}", exc_info=True)
+            await notifier.shutdown("Crawler")
+            await notifier.stop()
             await self.stop()
 
     async def stop(self) -> None:

@@ -19,6 +19,8 @@ from loguru import logger
 from src.config import get_config
 from src.database import init_db, get_session
 from src.database.models import Listing, SearchAnalytics
+from src.database.repository import UserRepository
+from src.notifier import get_notifier
 from src.search_engine import get_search_engine
 from src.i18n import get_i18n
 from src.bot_utils.formatters import (
@@ -41,6 +43,27 @@ class SearchStates(StatesGroup):
 
 
 # ---------------------------------------------------------------------------
+# User tracking
+# ---------------------------------------------------------------------------
+
+async def _track_user(message: Message) -> None:
+    """Upsert user from a message — fire-and-forget."""
+    u = message.from_user
+    if not u:
+        return
+    try:
+        await UserRepository.upsert_from_message(
+            telegram_id=u.id,
+            username=u.username,
+            first_name=u.first_name,
+            last_name=u.last_name,
+            language_code=u.language_code,
+        )
+    except Exception as e:
+        logger.error(f"User tracking failed: {e}")
+
+
+# ---------------------------------------------------------------------------
 # Search logic
 # ---------------------------------------------------------------------------
 
@@ -50,11 +73,15 @@ async def _perform_search(query_text: str, user_id: int) -> dict:
     results = await get_search_engine().search(query_text, limit=5)
     elapsed_ms = int((datetime.now() - start).total_seconds() * 1000)
 
+    result_ids = [r.get("id") for r in results if r.get("id")]
+
     try:
+        await UserRepository.increment_searches(user_id)
         async with get_session() as session:
             session.add(SearchAnalytics(
                 user_id=user_id, query_text=query_text,
                 results_count=len(results), response_time_ms=elapsed_ms,
+                result_listing_ids=result_ids,
                 searched_at=datetime.now(),
             ))
             await session.commit()
@@ -102,6 +129,7 @@ async def _send_search_results(message: Message, query: str, lang: str) -> None:
 async def cmd_start(message: Message):
     if not message.from_user:
         return
+    await _track_user(message)
     await message.answer(
         "👋 <b>Welcome to Tele-Google!</b>\n"
         "Добро пожаловать в Tele-Google!\n"
@@ -115,7 +143,8 @@ async def cmd_start(message: Message):
 async def cmd_help(message: Message):
     if not message.from_user:
         return
-    lang = get_user_language(message.from_user.id, message.from_user.language_code)
+    await _track_user(message)
+    lang = await get_user_language(message.from_user.id, message.from_user.language_code)
     await message.answer(format_help_message(lang))
 
 
@@ -123,7 +152,8 @@ async def cmd_help(message: Message):
 async def cmd_search(message: Message, state: FSMContext):
     if not message.from_user:
         return
-    lang = get_user_language(message.from_user.id, message.from_user.language_code)
+    await _track_user(message)
+    lang = await get_user_language(message.from_user.id, message.from_user.language_code)
     await state.set_state(SearchStates.waiting_for_query)
     await message.answer(
         f"🔍 <b>{i18n.get('commands.search.title', lang)}</b>\n\n"
@@ -136,7 +166,8 @@ async def cmd_search(message: Message, state: FSMContext):
 async def cmd_language(message: Message):
     if not message.from_user:
         return
-    lang = get_user_language(message.from_user.id, message.from_user.language_code)
+    await _track_user(message)
+    lang = await get_user_language(message.from_user.id, message.from_user.language_code)
     await message.answer(format_language_selection(lang), reply_markup=create_language_keyboard())
 
 
@@ -149,7 +180,7 @@ async def handle_search_query(message: Message, state: FSMContext):
     await state.clear()
     if not message.text or not message.from_user:
         return
-    lang = get_user_language(message.from_user.id, message.from_user.language_code)
+    lang = await get_user_language(message.from_user.id, message.from_user.language_code)
     await _send_search_results(message, message.text.strip(), lang)
 
 
@@ -157,7 +188,8 @@ async def handle_search_query(message: Message, state: FSMContext):
 async def handle_text_message(message: Message):
     if not message.text or not message.from_user:
         return
-    lang = get_user_language(message.from_user.id, message.from_user.language_code)
+    await _track_user(message)
+    lang = await get_user_language(message.from_user.id, message.from_user.language_code)
     await _send_search_results(message, message.text.strip(), lang)
 
 
@@ -170,7 +202,7 @@ async def handle_language_selection(callback: CallbackQuery):
     if not callback.data or not callback.from_user or not callback.message:
         return
     lang_code = callback.data.split(":")[1]
-    if set_user_language(callback.from_user.id, lang_code):
+    if await set_user_language(callback.from_user.id, lang_code):
         await callback.answer(get_language_success_message(lang_code))
         msg = callback.message
         if msg and not isinstance(msg, InaccessibleMessage):
@@ -183,11 +215,12 @@ async def handle_noop(callback: CallbackQuery):
 
 
 # ---------------------------------------------------------------------------
-# Daily cleanup — remove listings older than 30 days
+# Background tasks — cleanup + periodic health reporting
 # ---------------------------------------------------------------------------
 
 DAYS_TO_KEEP = 30
-CLEANUP_INTERVAL = 86400  # 24 hours in seconds
+CLEANUP_INTERVAL = 86400  # 24 hours
+HEALTH_INTERVAL = 21600   # 6 hours
 
 
 async def _cleanup_old_listings():
@@ -200,12 +233,56 @@ async def _cleanup_old_listings():
                     delete(Listing).where(Listing.created_at < cutoff)
                 )
                 await session.commit()
-                deleted = result.rowcount
+                deleted = result.rowcount  # type: ignore[attr-defined]
             if deleted:
                 logger.info(f"Cleanup: removed {deleted} listings older than {DAYS_TO_KEEP} days")
         except Exception as e:
             logger.error(f"Cleanup error: {e}")
         await asyncio.sleep(CLEANUP_INTERVAL)
+
+
+async def _periodic_health():
+    """Send system health report to the log channel every 6 hours."""
+    notifier = get_notifier()
+    while True:
+        await asyncio.sleep(HEALTH_INTERVAL)
+        try:
+            # System stats
+            proc = await asyncio.create_subprocess_shell(
+                "free -m | awk 'NR==2{printf \"RAM: %s/%sMB (%.0f%%)\", $3,$2,$3*100/$2}' && "
+                "echo '' && free -m | awk 'NR==3{printf \"Swap: %s/%sMB\", $3,$2}' && "
+                "echo '' && df -h / | awk 'NR==2{printf \"Disk: %s/%s (%s)\", $3,$2,$5}'",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=10)
+            sys_info = stdout.decode().strip()
+
+            # DB stats
+            async with get_session() as session:
+                from sqlalchemy import func, select
+                total = (await session.execute(
+                    select(func.count()).select_from(Listing)
+                )).scalar() or 0
+                with_price = (await session.execute(
+                    select(func.count()).select_from(Listing).where(Listing.price.isnot(None))
+                )).scalar() or 0
+
+            # Pipeline metrics from notifier
+            m = notifier.metrics
+            seen = m.get("messages_seen", 0)
+            indexed = m.get("listings_indexed", 0)
+            errors = m.get("errors", 0)
+
+            report = (
+                f"<pre>{sys_info}</pre>\n\n"
+                f"📦 Total: {total} listings ({with_price} with price)\n"
+                f"📊 Since last report: {seen} seen, {indexed} indexed, {errors} errors"
+            )
+            await notifier.health_report(report)
+
+        except Exception as e:
+            logger.error(f"Health report error: {e}")
 
 
 # ---------------------------------------------------------------------------
@@ -221,10 +298,18 @@ async def main():
     dp.include_router(admin_router)
     dp.include_router(router)
 
+    notifier = get_notifier()
+    await notifier.startup("Bot")
+    await notifier.start()
+
     cleanup_task = asyncio.create_task(_cleanup_old_listings())
+    health_task = asyncio.create_task(_periodic_health())
     logger.success("Bot started!")
     try:
         await dp.start_polling(bot)
     finally:
         cleanup_task.cancel()
+        health_task.cancel()
+        await notifier.shutdown("Bot")
+        await notifier.stop()
         await bot.session.close()

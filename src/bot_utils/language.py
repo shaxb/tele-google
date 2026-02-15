@@ -1,25 +1,32 @@
-"""Per-user language preference management."""
+"""Per-user language preference management — DB-backed with in-memory cache."""
 
 from typing import Dict, Optional
 from src.i18n import get_i18n
+from src.database.repository import UserRepository
 
 _i18n = get_i18n()
-_prefs: Dict[int, str] = {}
+_cache: Dict[int, str] = {}  # in-memory cache, populated from DB on first access
 
 SUPPORTED = ("uz", "ru", "en")
 
 
-def get_user_language(user_id: int, telegram_lang: Optional[str] = None) -> str:
+async def get_user_language(user_id: int, telegram_lang: Optional[str] = None) -> str:
     """Return saved preference for *user_id*, else detect from Telegram."""
-    if user_id in _prefs:
-        return _prefs[user_id]
+    if user_id in _cache:
+        return _cache[user_id]
+    # Try DB
+    db_pref = await UserRepository.get_preferred_language(user_id)
+    if db_pref and db_pref in SUPPORTED:
+        _cache[user_id] = db_pref
+        return db_pref
     return _i18n.detect_language(telegram_lang)
 
 
-def set_user_language(user_id: int, lang_code: str) -> bool:
+async def set_user_language(user_id: int, lang_code: str) -> bool:
     if lang_code not in SUPPORTED:
         return False
-    _prefs[user_id] = lang_code
+    _cache[user_id] = lang_code
+    await UserRepository.set_preferred_language(user_id, lang_code)
     return True
 
 

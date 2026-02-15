@@ -27,8 +27,10 @@ Also extract any ADDITIONAL item-specific fields you find, using intuitive Engli
 - For any item: add relevant fields as you see them. Use common sense naming.
 
 Respond with ONLY valid JSON:
-- If NOT a listing: {"is_listing": false}
-- If IS a listing: {"is_listing": true, "metadata": {"price": 12000, "currency": "USD", "category": "car", "title": "Gentra 2022", "condition": "used", "year": 2022, "mileage_km": 45000, ...}}"""
+- If NOT a listing: {"is_listing": false, "confidence": 0.95}
+- If IS a listing: {"is_listing": true, "confidence": 0.92, "metadata": {"price": 12000, "currency": "USD", "category": "car", "title": "Gentra 2022", "condition": "used", "year": 2022, "mileage_km": 45000, ...}}
+
+CONFIDENCE: A float 0.0–1.0 indicating how confident you are in the classification AND extraction quality. 1.0 = absolutely certain, rich data. 0.5 = uncertain or ambiguous. Below 0.6 = probably not a listing."""
 
 
 RERANK_PROMPT = """You are a marketplace search assistant for Uzbekistan.

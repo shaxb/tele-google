@@ -2,7 +2,7 @@
 
 from typing import List, Optional
 from loguru import logger
-from openai import OpenAI, OpenAIError
+from openai import AsyncOpenAI, OpenAIError
 
 from src.config import get_config
 
@@ -12,14 +12,14 @@ DIMENSIONS = 1536
 
 class EmbeddingGenerator:
     def __init__(self) -> None:
-        self.client = OpenAI(api_key=get_config().openai.api_key)
+        self.client = AsyncOpenAI(api_key=get_config().openai.api_key)
 
-    def generate(self, text: str) -> Optional[List[float]]:
+    async def generate(self, text: str) -> Optional[List[float]]:
         """Return a 1536-dim embedding vector for *text*, or None on failure."""
         if not text or not text.strip():
             return None
         try:
-            response = self.client.embeddings.create(
+            response = await self.client.embeddings.create(
                 model=MODEL, input=text, dimensions=DIMENSIONS
             )
             return response.data[0].embedding
