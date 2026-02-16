@@ -50,6 +50,7 @@ def format_help_message(lang: str) -> str:
         f"<b>📱 Commands</b>\n"
         f"/start - {i18n.get('commands.start.title', lang)}\n"
         f"/search - {i18n.get('commands.search.title', lang)}\n"
+        f"/price - Price check / valuation\n"
         f"/help - {i18n.get('commands.help.title', lang)}\n"
         f"/language - Change language"
     )
@@ -89,19 +90,118 @@ def format_result_message(index: int, result: Dict[str, Any]) -> str:
     msg_id = result.get("source_message_id")
     raw_text = result.get("raw_text", "")
     similarity = result.get("similarity_score", 0)
+    metadata = result.get("metadata") or {}
 
     if not channel or not msg_id:
         return ""
 
     link = f"https://t.me/{channel.lstrip('@')}/{msg_id}"
-    preview = _truncate(raw_text) if raw_text else "(No text)"
     pct = int(similarity * 100)
     emoji = "🟢" if pct >= 80 else "🟡" if pct >= 60 else "🟠"
 
-    return (
-        f"📱 <b>Result {index}</b> {emoji} {pct}% match\n\n"
-        f"{preview}\n\n"
-        f"🔗 <a href='{link}'>View Original Message</a>\n"
-        f"📍 Channel: {channel}"
-    )
+    # Title from metadata or truncated raw text
+    title = metadata.get("title") or _truncate(raw_text, 80) or "(No title)"
+    category = metadata.get("category")
+    condition = metadata.get("condition")
+
+    # Price line
+    price = result.get("price")
+    currency = result.get("currency")
+    price_str = ""
+    if price is not None:
+        cur = currency or ""
+        if cur == "USD":
+            price_str = f"${price:,.0f}"
+        elif cur == "UZS":
+            price_str = f"{price:,.0f} сўм"
+        else:
+            price_str = f"{price:,.0f} {cur}".strip()
+
+    # Build detail line: category | condition | extra metadata
+    details = []
+    if category:
+        cat_emoji = {
+            "car": "🚗", "phone": "📱", "apartment": "🏠",
+            "electronics": "💻", "clothing": "👕", "furniture": "🪑",
+            "services": "🔧",
+        }.get(category, "📦")
+        details.append(f"{cat_emoji} {category}")
+    if condition:
+        details.append(f"{'✨' if condition == 'new' else '♻️'} {condition}")
+
+    # Extra metadata highlights (brand, model, year, etc.)
+    skip_keys = {"price", "currency", "category", "title", "condition"}
+    extras = {k: v for k, v in metadata.items() if k not in skip_keys and v is not None}
+    highlight_keys = ["brand", "model", "year", "storage_gb", "rooms", "color"]
+    for k in highlight_keys:
+        if k in extras:
+            details.append(f"{k}: {extras[k]}")
+
+    detail_line = " · ".join(details) if details else ""
+
+    lines = [f"<b>{index}. {_esc_html(title)}</b> {emoji} {pct}%"]
+    if price_str:
+        lines.append(f"💰 {price_str}")
+    if detail_line:
+        lines.append(detail_line)
+    if not metadata:
+        # No metadata — show raw text preview
+        preview = _truncate(raw_text, 200)
+        if preview:
+            lines.append(f"<i>{_esc_html(preview)}</i>")
+    lines.append(f"🔗 <a href='{link}'>View in {channel}</a>")
+
+    return "\n".join(lines)
+
+
+def _esc_html(text: str) -> str:
+    """Escape HTML special characters."""
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def format_valuation_result(query: str, data: Dict[str, Any]) -> str:
+    """Format price check / valuation result."""
+    cur = data["currency"]
+
+    def _fmt_price(p: float) -> str:
+        if cur == "USD":
+            return f"${p:,.0f}"
+        if cur == "UZS":
+            return f"{p:,.0f} сўм"
+        return f"{p:,.0f} {cur}"
+
+    median = _fmt_price(data["median_price"])
+    mean = _fmt_price(data["mean_price"])
+    low = _fmt_price(data["min_price"])
+    high = _fmt_price(data["max_price"])
+    spread = data.get("price_range_pct", 0)
+    count = data["sample_count"]
+
+    lines = [
+        f"💰 <b>Price Check: {_esc_html(query)}</b>\n",
+        f"📊 Based on <b>{count}</b> similar listings\n",
+        f"🎯 <b>Fair value: {median}</b>",
+        f"📈 Average: {mean}",
+        f"📉 Range: {low} – {high}",
+        f"📐 Spread: {spread:.0f}%\n",
+    ]
+
+    # Show sample listings
+    samples = data.get("sample_listings", [])
+    if samples:
+        lines.append("📋 <b>Comparable listings:</b>")
+        for s in samples:
+            title = s.get("title", "?")
+            price = s.get("price", 0)
+            ch = s.get("channel", "?")
+            mid = s.get("message_id")
+            p_str = _fmt_price(price)
+            if mid and ch:
+                link = f"https://t.me/{ch.lstrip('@')}/{mid}"
+                lines.append(f"  • {_esc_html(title)} — {p_str} <a href='{link}'>→</a>")
+            else:
+                lines.append(f"  • {_esc_html(title)} — {p_str}")
+
+    lines.append(f"\n💡 <i>Prices based on recent marketplace listings</i>")
+    return "\n".join(lines)
 

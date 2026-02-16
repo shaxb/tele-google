@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
 from loguru import logger
+from sqlalchemy.exc import IntegrityError
 from telethon import TelegramClient, events
 from telethon.tl.functions.channels import JoinChannelRequest
 from telethon.tl.types import Message as TelegramMessage
@@ -45,6 +46,14 @@ class TelegramCrawler:
         client = TelegramClient(session_path, api_id, api_hash)
         await client.connect()
         if not await client.is_user_authorized():
+            import sys
+            if not sys.stdin.isatty():
+                # Running under systemd / headless — cannot prompt for code
+                await client.disconnect()
+                raise RuntimeError(
+                    f"Session '{session_path}' is not authorized and stdin is not a TTY. "
+                    "Use /auth command from the bot, or run the crawler interactively to authenticate."
+                )
             await client.start(phone=phone)  # type: ignore[misc]
         return client
 
@@ -191,19 +200,24 @@ class TelegramCrawler:
             message_link = f"https://t.me/{channel_clean}/{message.id}"
 
             msg_date = message.date.replace(tzinfo=None) if message.date else datetime.utcnow()
-            listing = await ListingRepository.create(
-                source_channel=channel_id,
-                source_message_id=message.id,
-                raw_text=raw_text,
-                has_media=bool(message.media),
-                embedding=embedding,
-                created_at=msg_date,
-                metadata=metadata,
-                message_link=message_link,
-                classification_confidence=confidence,
-                processing_time_ms=processing_time_ms,
-                raw_ai_response=raw_ai_response,
-            )
+            try:
+                listing = await ListingRepository.create(
+                    source_channel=channel_id,
+                    source_message_id=message.id,
+                    raw_text=raw_text,
+                    has_media=bool(message.media),
+                    embedding=embedding,
+                    created_at=msg_date,
+                    metadata=metadata,
+                    message_link=message_link,
+                    classification_confidence=confidence,
+                    processing_time_ms=processing_time_ms,
+                    raw_ai_response=raw_ai_response,
+                )
+            except IntegrityError:
+                # Race condition: another process already indexed this message
+                logger.debug(f"Duplicate message {message.id} from {channel_id} — skipping")
+                return
             await ChannelRepository.update_stats(channel_id, message.id)
 
             title = metadata.get("title", "?")  # type: ignore[union-attr]
@@ -262,7 +276,10 @@ class TelegramCrawler:
         for client in self.clients:
             @client.on(events.NewMessage(chats=list(self.active_channels)))
             async def handler(event: events.NewMessage.Event) -> None:
-                await self.process_message(event)
+                try:
+                    await self.process_message(event)
+                except Exception as e:
+                    logger.error(f"Unhandled error in message handler: {e}")
 
         logger.success(f"Monitoring {len(self.active_channels)} channels")
 
@@ -340,6 +357,14 @@ class TelegramCrawler:
             await notifier.shutdown("Crawler")
             await notifier.stop()
             await self.stop()
+        except RuntimeError as e:
+            # Auth failure or similar — log clearly and exit without rapid restart
+            logger.critical(f"Crawler startup failed (non-retryable): {e}")
+            await notifier.error("startup", e)
+            await notifier.stop()
+            await self.stop()
+            # Sleep so systemd doesn't restart us in a tight loop
+            await asyncio.sleep(300)
         except Exception as e:
             logger.error(f"Crawler failed: {e}", exc_info=True)
             await notifier.shutdown("Crawler")

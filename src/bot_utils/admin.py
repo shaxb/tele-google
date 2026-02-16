@@ -666,7 +666,7 @@ async def cmd_deploy(message: Message):
     try:
         # Step 1: git pull
         proc = await asyncio.create_subprocess_shell(
-            "cd ~/tele-google && git pull origin main 2>&1",
+            "cd ~/tele-google && git pull origin master 2>&1",
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )

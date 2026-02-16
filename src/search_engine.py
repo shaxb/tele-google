@@ -1,5 +1,6 @@
 """Search pipeline: embed query → pgvector top 50 → AI rerank → top N results.
 Deal detection: embed listing → pgvector neighbors → median price comparison.
+Valuation: embed query → find priced neighbors → return price statistics.
 """
 
 import statistics
@@ -108,6 +109,77 @@ class SearchEngine:
                 else "overpriced" if deviation >= 0.15
                 else "market_price"
             ),
+        }
+
+    # ------------------------------------------------------------------
+    # Valuation: price check / "what is it worth?"
+    # ------------------------------------------------------------------
+
+    async def valuate(
+        self,
+        query_text: str,
+        currency_filter: Optional[str] = None,
+        neighbor_limit: int = 30,
+        min_similarity: float = 0.80,
+        min_samples: int = 3,
+    ) -> Optional[Dict[str, Any]]:
+        """Find similar listings with prices and return price statistics.
+
+        Returns dict with median, mean, min, max, sample_count, sample_listings
+        or None if insufficient data.
+        """
+        query_embedding = await self.embedding_gen.generate(query_text)
+        if not query_embedding:
+            return None
+
+        candidates = await self._find_similar(query_embedding, candidate_limit=neighbor_limit)
+
+        # Filter to priced listings with sufficient similarity
+        priced = []
+        for c in candidates:
+            if (
+                c["price"] is not None
+                and c["price"] > 0
+                and c["similarity_score"] >= min_similarity
+            ):
+                if currency_filter and c.get("currency") != currency_filter:
+                    continue
+                priced.append(c)
+
+        if len(priced) < min_samples:
+            return None
+
+        prices = [c["price"] for c in priced]
+        median = statistics.median(prices)
+        mean = statistics.mean(prices)
+
+        # Determine dominant currency
+        currencies = [c.get("currency") for c in priced if c.get("currency")]
+        dominant_currency = max(set(currencies), key=currencies.count) if currencies else "?"
+
+        # Pick representative samples (closest to median)
+        samples_sorted = sorted(priced, key=lambda c: abs(c["price"] - median))
+        sample_listings = [
+            {
+                "title": (c.get("metadata") or {}).get("title", "?"),
+                "price": c["price"],
+                "currency": c.get("currency", "?"),
+                "channel": c.get("source_channel", "?"),
+                "message_id": c.get("source_message_id"),
+                "similarity": round(c["similarity_score"], 3),
+            }
+            for c in samples_sorted[:5]
+        ]
+
+        return {
+            "median_price": round(median, 2),
+            "mean_price": round(mean, 2),
+            "min_price": round(min(prices), 2),
+            "max_price": round(max(prices), 2),
+            "sample_count": len(priced),
+            "currency": dominant_currency,
+            "sample_listings": sample_listings,
+            "price_range_pct": round((max(prices) - min(prices)) / median * 100, 1) if median > 0 else 0,
         }
 
 

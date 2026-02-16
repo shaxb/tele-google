@@ -26,7 +26,7 @@ from src.i18n import get_i18n
 from src.bot_utils.formatters import (
     format_welcome_message, format_help_message,
     format_language_selection, format_no_results, format_search_header,
-    create_language_keyboard, format_result_message,
+    create_language_keyboard, format_result_message, format_valuation_result,
 )
 from src.bot_utils.language import get_user_language, set_user_language, get_language_success_message
 from src.bot_utils.admin import router as admin_router
@@ -169,6 +169,52 @@ async def cmd_language(message: Message):
     await _track_user(message)
     lang = await get_user_language(message.from_user.id, message.from_user.language_code)
     await message.answer(format_language_selection(lang), reply_markup=create_language_keyboard())
+
+
+@router.message(Command("price"))
+async def cmd_price(message: Message):
+    """Valuation command — /price iPhone 13 128GB → returns market price range."""
+    if not message.from_user or not message.text:
+        return
+    await _track_user(message)
+    lang = await get_user_language(message.from_user.id, message.from_user.language_code)
+
+    parts = message.text.split(maxsplit=1)
+    if len(parts) < 2:
+        await message.answer(
+            "💰 <b>Price Check</b>\n\n"
+            "Send: <code>/price item name</code>\n\n"
+            "<b>Examples:</b>\n"
+            "• <code>/price iPhone 13 128GB</code>\n"
+            "• <code>/price Gentra 2022</code>\n"
+            "• <code>/price 3 xonali kvartira</code>"
+        )
+        return
+
+    query = parts[1].strip()
+    await bot.send_chat_action(chat_id=message.chat.id, action=ChatAction.TYPING)
+    status = await message.answer(f"💰 <i>Analyzing prices for: {query}</i>")
+
+    try:
+        result = await get_search_engine().valuate(query)
+        await status.delete()
+
+        if not result:
+            await message.answer(
+                f"💰 <b>Price Check</b>\n\n"
+                f"Query: <i>{query}</i>\n\n"
+                f"❌ Not enough price data to estimate value.\n"
+                f"We need at least 3 similar listings with prices.\n\n"
+                f"💡 Try a more specific or common item name."
+            )
+            return
+
+        await message.answer(format_valuation_result(query, result))
+
+    except Exception as e:
+        logger.error(f"Price check error: {e}")
+        await status.delete()
+        await message.answer(f"❌ Price check failed.")
 
 
 # ---------------------------------------------------------------------------
