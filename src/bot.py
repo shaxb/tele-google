@@ -4,10 +4,9 @@ User sends query → embed → pgvector → AI rerank → return results.
 """
 
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from aiogram import Bot, Dispatcher, Router, F
-from sqlalchemy import delete
 from aiogram.filters import Command, CommandStart
 from aiogram.types import Message, CallbackQuery, InaccessibleMessage
 from aiogram.enums import ParseMode, ChatAction
@@ -264,27 +263,7 @@ async def handle_noop(callback: CallbackQuery):
 # Background tasks — cleanup + periodic health reporting
 # ---------------------------------------------------------------------------
 
-DAYS_TO_KEEP = 30
-CLEANUP_INTERVAL = 86400  # 24 hours
 HEALTH_INTERVAL = 21600   # 6 hours
-
-
-async def _cleanup_old_listings():
-    """Delete listings older than DAYS_TO_KEEP days. Runs in a loop every 24h."""
-    while True:
-        try:
-            cutoff = datetime.utcnow() - timedelta(days=DAYS_TO_KEEP)
-            async with get_session() as session:
-                result = await session.execute(
-                    delete(Listing).where(Listing.created_at < cutoff)
-                )
-                await session.commit()
-                deleted = result.rowcount  # type: ignore[attr-defined]
-            if deleted:
-                logger.info(f"Cleanup: removed {deleted} listings older than {DAYS_TO_KEEP} days")
-        except Exception as e:
-            logger.error(f"Cleanup error: {e}")
-        await asyncio.sleep(CLEANUP_INTERVAL)
 
 
 async def _periodic_health():
@@ -348,13 +327,11 @@ async def main():
     await notifier.startup("Bot")
     await notifier.start()
 
-    cleanup_task = asyncio.create_task(_cleanup_old_listings())
     health_task = asyncio.create_task(_periodic_health())
     logger.success("Bot started!")
     try:
         await dp.start_polling(bot)
     finally:
-        cleanup_task.cancel()
         health_task.cancel()
         await notifier.shutdown("Bot")
         await notifier.stop()

@@ -4,11 +4,14 @@ Valuation: embed query → find priced neighbors → return price statistics.
 """
 
 import statistics
+from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 from loguru import logger
 from sqlalchemy import select, text
 
 from src.database.models import Listing
+
+MAX_LISTING_AGE_DAYS = 30
 from src.database import get_session
 from src.embeddings import get_embedding_generator
 from src.ai_parser import get_ai_parser
@@ -33,12 +36,14 @@ class SearchEngine:
         return [candidates[i] for i in indices[:limit]]
 
     async def _find_similar(self, embedding: List[float], candidate_limit: int = 50) -> List[Dict[str, Any]]:
+        cutoff = datetime.utcnow() - timedelta(days=MAX_LISTING_AGE_DAYS)
         async with get_session() as session:
             rows = (await session.execute(
                 select(
                     Listing,
                     (1 - Listing.embedding.cosine_distance(embedding)).label("similarity"),
                 )
+                .where(Listing.created_at >= cutoff)
                 .order_by(text("similarity DESC"))
                 .limit(candidate_limit)
             )).all()

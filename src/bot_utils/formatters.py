@@ -100,7 +100,7 @@ def format_result_message(index: int, result: Dict[str, Any]) -> str:
     link = f"https://t.me/{channel.lstrip('@')}/{msg_id}"
     pct = int(similarity * 100)
     emoji = "🟢" if pct >= 80 else "🟡" if pct >= 60 else "🟠"
-    preview = _truncate(raw_text, 300)
+    preview = _truncate(raw_text, 600)
 
     return (
         f"<b>{index}.</b> {emoji} {pct}% match\n"
