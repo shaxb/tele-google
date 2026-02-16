@@ -4,7 +4,6 @@ from loguru import logger
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 
 from src.config import get_config
-from src.database.models import Base
 
 _engine = None
 _async_session_factory = None
@@ -37,9 +36,6 @@ async def init_db() -> None:
     _async_session_factory = async_sessionmaker(
         _engine, class_=AsyncSession, expire_on_commit=False
     )
-
-    async with _engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
 
     logger.info("Database initialized")
 

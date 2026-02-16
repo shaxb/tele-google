@@ -1,6 +1,6 @@
 """SQLAlchemy database models."""
 
-from sqlalchemy import BigInteger, Boolean, Column, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy import BigInteger, Boolean, Column, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB
 from pgvector.sqlalchemy import Vector
 from sqlalchemy.orm import declarative_base, relationship
@@ -43,6 +43,7 @@ class Listing(Base):
     __tablename__ = "listings"
     __table_args__ = (
         UniqueConstraint("source_channel", "source_message_id", name="uq_listing_channel_message"),
+        Index("ix_listings_metadata", "metadata", postgresql_using="gin"),
     )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
@@ -53,7 +54,7 @@ class Listing(Base):
     embedding = Column(Vector(1536), nullable=False)
     item_metadata = Column("metadata", JSONB, nullable=True)
     price = Column(Float, nullable=True, index=True)
-    currency = Column(String(10), nullable=True)
+    currency = Column(String(10), nullable=True, index=True)
     # Pipeline traceability
     message_link = Column(Text, nullable=True)
     classification_confidence = Column(Float, nullable=True)
