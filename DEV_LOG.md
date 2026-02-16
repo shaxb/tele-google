@@ -5,6 +5,47 @@ persistent context across development sessions.
 
 ---
 
+## Session: 2026-02-16 — Valuation, Formatting, Resilience
+
+### Completed
+
+1. **Crawler auth crash loop fix** — When session is invalid under systemd (no TTY),
+   crawler now detects headless mode, logs CRITICAL, and sleeps 5min instead of crash-looping
+   with SendCodeRequest floods that trigger Telegram rate limits.
+
+2. **Search result formatting overhaul** — Results now show:
+   - Extracted title (from metadata) instead of raw text blob
+   - Price with proper currency formatting ($, сўм)
+   - Category with emoji icons (🚗 car, 📱 phone, 🏠 apartment, etc.)
+   - Condition (✨ new / ♻️ used)
+   - Extra metadata highlights (brand, model, year, storage_gb, etc.)
+   - Clean "View in @channel" link
+
+3. **`/price` command (Pillar 2: Valuation)** — Users send `/price iPhone 13 128GB`
+   and get market price estimates:
+   - Embeds query → pgvector neighbors → filters priced listings → statistics
+   - Returns: median (fair value), mean, min-max range, spread %, comparable listings
+   - Minimum 3 samples required, similarity threshold 0.80
+   - `SearchEngine.valuate()` method added
+
+4. **Crawler resilience hardening**:
+   - `IntegrityError` from unique constraint race conditions now handled gracefully
+   - Message handler wrapped in try/except to prevent crash on single message
+   - `import sys; sys.stdin.isatty()` check before Telethon interactive auth
+
+5. **Deploy command fix** — `/deploy` was using `git pull origin main` but repo uses
+   `master` branch. Fixed.
+
+6. **Session re-authentication** — Local session expired, re-authenticated as Topdim_HQ
+   with phone +998333931751, copied to EC2.
+
+### Production State
+- Bot: active (running), /price command live
+- Crawler: active, monitoring 8 channels, authenticated as Topdim_HQ
+- Both services on EC2 t3.micro with systemd
+
+---
+
 ## Session: 2026-02-15 — Foundation + Pipeline Quality
 
 ### Status Before This Session
