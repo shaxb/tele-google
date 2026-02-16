@@ -89,6 +89,5 @@ class SearchAnalytics(Base):
     query_text = Column(Text, nullable=False)
     results_count = Column(Integer, nullable=True)
     result_listing_ids = Column(JSONB, nullable=True)  # [id1, id2, ...]
-    clicked_listing_id = Column(BigInteger, nullable=True)
     searched_at = Column(DateTime, default=func.now(), nullable=False)
     response_time_ms = Column(Integer, nullable=True)
