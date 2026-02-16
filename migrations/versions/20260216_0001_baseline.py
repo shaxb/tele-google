@@ -3,8 +3,7 @@
 This migration represents the existing production schema as of 2026-02-16.
 It does NOT create or alter any tables — the schema already exists.
 
-To bootstrap a new database, apply db/schema.sql first, then stamp this
-revision: alembic stamp head
+To bootstrap a new database from scratch, run: alembic upgrade head
 
 Revision ID: 0001_baseline
 Revises: (none)

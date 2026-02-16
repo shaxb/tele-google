@@ -63,7 +63,6 @@ Alembic is the **sole schema manager**. `connection.py` no longer calls `create_
 - To check status: `alembic current` / `alembic history`
 - `env.py` handles async engine + pgvector `Vector` type rendering
 - The baseline migration (`0001_baseline`) represents the schema as of 2026-02-16
-- `db/schema.sql` is the human-readable reference copy
 
 ### HTML Escaping
 One canonical function: `_esc_html()` in `src/bot_utils/formatters.py`. Other escape functions exist in notifier.py and admin.py (the one in admin.py is buggy — misses `&`). Use `_esc_html()`. Don't create new ones.
