@@ -85,12 +85,14 @@ def format_search_header(lang: str, total: int, query: str, ms: int) -> str:
 
 
 def format_result_message(index: int, result: Dict[str, Any]) -> str:
-    """Format a single search result for Telegram."""
+    """Format a single search result for Telegram.
+
+    Simple format: number + match % + raw text + link to original.
+    """
     channel = result.get("source_channel", "")
     msg_id = result.get("source_message_id")
     raw_text = result.get("raw_text", "")
     similarity = result.get("similarity_score", 0)
-    metadata = result.get("metadata") or {}
 
     if not channel or not msg_id:
         return ""
@@ -98,60 +100,13 @@ def format_result_message(index: int, result: Dict[str, Any]) -> str:
     link = f"https://t.me/{channel.lstrip('@')}/{msg_id}"
     pct = int(similarity * 100)
     emoji = "🟢" if pct >= 80 else "🟡" if pct >= 60 else "🟠"
+    preview = _truncate(raw_text, 300)
 
-    # Title from metadata or truncated raw text
-    title = metadata.get("title") or _truncate(raw_text, 80) or "(No title)"
-    category = metadata.get("category")
-    condition = metadata.get("condition")
-
-    # Price line
-    price = result.get("price")
-    currency = result.get("currency")
-    price_str = ""
-    if price is not None:
-        cur = currency or ""
-        if cur == "USD":
-            price_str = f"${price:,.0f}"
-        elif cur == "UZS":
-            price_str = f"{price:,.0f} сўм"
-        else:
-            price_str = f"{price:,.0f} {cur}".strip()
-
-    # Build detail line: category | condition | extra metadata
-    details = []
-    if category:
-        cat_emoji = {
-            "car": "🚗", "phone": "📱", "apartment": "🏠",
-            "electronics": "💻", "clothing": "👕", "furniture": "🪑",
-            "services": "🔧",
-        }.get(category, "📦")
-        details.append(f"{cat_emoji} {category}")
-    if condition:
-        details.append(f"{'✨' if condition == 'new' else '♻️'} {condition}")
-
-    # Extra metadata highlights (brand, model, year, etc.)
-    skip_keys = {"price", "currency", "category", "title", "condition"}
-    extras = {k: v for k, v in metadata.items() if k not in skip_keys and v is not None}
-    highlight_keys = ["brand", "model", "year", "storage_gb", "rooms", "color"]
-    for k in highlight_keys:
-        if k in extras:
-            details.append(f"{k}: {extras[k]}")
-
-    detail_line = " · ".join(details) if details else ""
-
-    lines = [f"<b>{index}. {_esc_html(title)}</b> {emoji} {pct}%"]
-    if price_str:
-        lines.append(f"💰 {price_str}")
-    if detail_line:
-        lines.append(detail_line)
-    if not metadata:
-        # No metadata — show raw text preview
-        preview = _truncate(raw_text, 200)
-        if preview:
-            lines.append(f"<i>{_esc_html(preview)}</i>")
-    lines.append(f"🔗 <a href='{link}'>View in {channel}</a>")
-
-    return "\n".join(lines)
+    return (
+        f"<b>{index}.</b> {emoji} {pct}% match\n"
+        f"{_esc_html(preview)}\n"
+        f"🔗 <a href='{link}'>Original message</a>"
+    )
 
 
 def _esc_html(text: str) -> str:
