@@ -88,13 +88,19 @@ class Notifier:
     async def _send_loop(self) -> None:
         """Consumer: sends queued messages with rate limiting (1 msg/sec)."""
         while True:
-            text = await self._queue.get()
-            if self._bot and self._channel_id:
-                try:
-                    await self._bot.send_message(self._channel_id, text[:4096])
-                except Exception as e:
-                    logger.warning(f"Notifier send failed: {e}")
-            await asyncio.sleep(1)  # Rate limit: max 1 msg/sec
+            try:
+                text = await self._queue.get()
+                if self._bot and self._channel_id:
+                    try:
+                        await self._bot.send_message(self._channel_id, text[:4096])
+                    except Exception as e:
+                        logger.warning(f"Notifier send failed: {e}")
+                await asyncio.sleep(1)  # Rate limit: max 1 msg/sec
+            except asyncio.CancelledError:
+                raise
+            except Exception as e:
+                logger.error(f"Notifier send loop error: {e}")
+                await asyncio.sleep(5)
 
     # ------------------------------------------------------------------
     # Event methods — the public API
@@ -103,14 +109,14 @@ class Notifier:
     async def startup(self, service: str) -> None:
         """Service started."""
         self._enqueue(
-            f"🟢 <b>{service}</b> started\n"
+            f"🟢 <b>{esc_html(service)}</b> started\n"
             f"🕐 {datetime.utcnow():%Y-%m-%d %H:%M UTC}"
         )
 
     async def shutdown(self, service: str) -> None:
         """Service stopping."""
         self._enqueue(
-            f"🔴 <b>{service}</b> stopping\n"
+            f"🔴 <b>{esc_html(service)}</b> stopping\n"
             f"🕐 {datetime.utcnow():%Y-%m-%d %H:%M UTC}"
         )
 
@@ -124,8 +130,11 @@ class Notifier:
     ) -> None:
         """New listing indexed — full pipeline traceability."""
         self.metrics["listings_indexed"] += 1
-        price_str = f"{float(price):,.0f} {currency}" if price else "—"
-        cat = category or "?"
+        try:
+            price_str = f"{float(price):,.0f} {esc_html(str(currency or '?'))}" if price else "—"
+        except (ValueError, TypeError):
+            price_str = esc_html(str(price))
+        cat = esc_html(str(category or "?"))
         link_line = f"  🔗 {message_link}\n" if message_link else ""
 
         # Format extra metadata fields (exclude universal ones already shown)
@@ -134,12 +143,14 @@ class Notifier:
             skip = {"price", "currency", "category", "title", "condition"}
             extras = {k: v for k, v in metadata.items() if k not in skip and v is not None}
             if extras:
-                extra = "  🧩 " + " | ".join(f"{k}: {v}" for k, v in extras.items()) + "\n"
+                extra = "  🧩 " + " | ".join(
+                    f"{esc_html(str(k))}: {esc_html(str(v))}" for k, v in extras.items()
+                ) + "\n"
 
         self._enqueue(
             f"📦 <b>{esc_html(title)}</b>\n"
             f"{link_line}"
-            f"  💰 {price_str} | 📂 {cat} | 📡 {channel}\n"
+            f"  💰 {price_str} | 📂 {cat} | 📡 {esc_html(str(channel))}\n"
             f"{extra}"
             f"  📊 {confidence:.0%} conf | ⏱ {processing_time_ms}ms"
         )
@@ -162,8 +173,19 @@ class Notifier:
         self._enqueue(
             f"🔥 <b>DEAL DETECTED</b>\n"
             f"  {esc_html(title)}\n"
-            f"  💰 {price:,.0f} {currency} vs median {median:,.0f}\n"
+            f"  💰 {price:,.0f} {esc_html(currency)} vs median {median:,.0f}\n"
             f"  📉 {pct:.0f}% below market"
+        )
+
+    async def search(
+        self, user_id: int, query: str, results_count: int, response_time_ms: int,
+    ) -> None:
+        """User search executed."""
+        emoji = "✅" if results_count > 0 else "⭕"
+        self._enqueue(
+            f"🔍 <b>Search</b> by <code>{user_id}</code>\n"
+            f"  {emoji} {results_count} results in {response_time_ms}ms\n"
+            f"  📝 {esc_html(query)}"
         )
 
     async def alert(self, message: str) -> None:
@@ -185,32 +207,37 @@ class Notifier:
     async def _error_flush_loop(self) -> None:
         """Group errors and send a summary every 60 seconds."""
         while True:
-            await asyncio.sleep(60)
-            if not self._error_buffer:
-                continue
+            try:
+                await asyncio.sleep(60)
+                if not self._error_buffer:
+                    continue
 
-            errors = self._error_buffer.copy()
-            self._error_buffer.clear()
+                errors = self._error_buffer.copy()
+                self._error_buffer.clear()
 
-            if len(errors) == 1:
-                e = errors[0]
-                self._enqueue(
-                    f"🔴 <b>Error</b> in {esc_html(e['ctx'])}\n"
-                    f"  <code>{esc_html(e['err'])}</code>\n"
-                    f"  🕐 {e['time']}"
-                )
-            else:
-                # Group by context
-                groups: Dict[str, int] = defaultdict(int)
-                for e in errors:
-                    groups[e["ctx"]] += 1
-                lines = [f"🔴 <b>{len(errors)} errors</b> in last 60s\n"]
-                for ctx, cnt in sorted(groups.items(), key=lambda x: -x[1]):
-                    lines.append(f"  • {esc_html(ctx)}: {cnt}x")
-                # Show last error detail
-                last = errors[-1]
-                lines.append(f"\n  Last: <code>{esc_html(last['err'])}</code>")
-                self._enqueue("\n".join(lines))
+                if len(errors) == 1:
+                    e = errors[0]
+                    self._enqueue(
+                        f"🔴 <b>Error</b> in {esc_html(e['ctx'])}\n"
+                        f"  <code>{esc_html(e['err'])}</code>\n"
+                        f"  🕐 {e['time']}"
+                    )
+                else:
+                    # Group by context
+                    groups: Dict[str, int] = defaultdict(int)
+                    for e in errors:
+                        groups[e["ctx"]] += 1
+                    lines = [f"🔴 <b>{len(errors)} errors</b> in last 60s\n"]
+                    for ctx, cnt in sorted(groups.items(), key=lambda x: -x[1]):
+                        lines.append(f"  • {esc_html(ctx)}: {cnt}x")
+                    # Show last error detail
+                    last = errors[-1]
+                    lines.append(f"\n  Last: <code>{esc_html(last['err'])}</code>")
+                    self._enqueue("\n".join(lines))
+            except asyncio.CancelledError:
+                raise
+            except Exception as e:
+                logger.error(f"Notifier error flush failed: {e}")
 
 
 # ---------------------------------------------------------------------------

@@ -76,6 +76,12 @@ async def _perform_search(query_text: str, user_id: int) -> dict:
         )
     except Exception as e:
         logger.error(f"Analytics tracking failed: {e}")
+        await get_notifier().error("analytics", e)
+
+    try:
+        await get_notifier().search(user_id, query_text, len(results), elapsed_ms)
+    except Exception as e:
+        logger.warning(f"Search notification failed: {e}")
 
     return {"results": results, "processing_time_ms": elapsed_ms}
 
@@ -106,6 +112,7 @@ async def _send_search_results(message: Message, query: str, lang: str) -> None:
 
     except Exception as e:
         logger.error(f"Search error: {e}")
+        await get_notifier().error("search", e)
         await status.delete()
         await message.answer(f"❌ <b>{i18n.get('errors.search_failed', lang)}</b>")
 

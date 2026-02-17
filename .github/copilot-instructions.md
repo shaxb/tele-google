@@ -26,7 +26,7 @@ Extend behavior through new methods or parameters. Don't modify working internal
 Depend on abstractions (the singleton getters), not on concrete instances. Don't instantiate services directly — use `get_config()`, `get_ai_parser()`, `get_search_engine()`, etc.
 
 ### No Dead Code
-Every column in the schema must be read somewhere. Every function must be called. Every import must be used. If it's not needed yet, it doesn't exist yet. Remove before adding.
+Every import must be used. Don't leave behind functions or variables that nothing references. But — distinguish between "dead" (will never be used) and "unfinished" (planned, needs wiring). If a method exists as part of a module's public API but isn't called yet, it may be intentional. Ask before deleting.
 
 ### Minimal Surface Area
 - Don't add new files when extending an existing one works
@@ -65,7 +65,7 @@ Alembic is the **sole schema manager**. `connection.py` no longer calls `create_
 - The baseline migration (`0001_baseline`) represents the schema as of 2026-02-16
 
 ### HTML Escaping
-One canonical function: `_esc_html()` in `src/bot_utils/formatters.py`. Other escape functions exist in notifier.py and admin.py (the one in admin.py is buggy — misses `&`). Use `_esc_html()`. Don't create new ones.
+One canonical function: `esc_html()` (public) in `src/bot_utils/formatters.py`. All modules import from there. Don't create local escape functions.
 
 ### PostgreSQL Port
 Port **5433**, not 5432. See `docker-compose.yml`.
@@ -97,7 +97,7 @@ EC2 t3.micro, 914 MiB RAM + 2GB swap. No bulk queries without LIMIT. No large in
 | `src/search_engine.py` | Search, deal detection, valuation | Orchestrates embeddings + AI + repository for queries |
 | `src/bot.py` | User-facing Telegram interface | Thin — delegates to search_engine, formatters, i18n |
 | `src/bot_utils/admin.py` | Admin-only commands | Operational tooling, not user features |
-| `src/notifier.py` | Log channel events | Fire-and-forget, never blocks caller |
+| `src/notifier.py` | System observability — log channel events | Fire-and-forget, rate-limited queue. Methods may exist for planned features — don't remove them |
 | `src/config.py` | Configuration | Pure data, no logic |
 | `src/i18n.py` | Translations | uz/ru/en in `src/locales/*.json` |
 
