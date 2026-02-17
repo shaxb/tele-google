@@ -16,6 +16,7 @@ from src.config import get_config
 from src.database import get_session
 from src.database.models import Listing, User
 from src.database.repository import ChannelRepository
+from src.bot_utils.formatters import esc_html
 from src.utils.channels import load_channels, save_channels
 
 router = Router(name="admin")
@@ -107,7 +108,7 @@ async def cmd_add_channel(message: Message):
         logger.success(f"Admin {message.from_user.id} added {channel} ({indexed} msgs)")  # type: ignore[union-attr]
     except Exception as e:
         logger.error(f"Failed to add {channel}: {e}")
-        await status.edit_text(f"❌ Failed to add channel\n\n<code>{_esc(e)}</code>")
+        await status.edit_text(f"❌ Failed to add channel\n\n<code>{esc_html(str(e)[:200])}</code>")
 
 
 @router.message(Command("removechannel"))
@@ -153,7 +154,7 @@ async def cmd_remove_channel(message: Message):
         logger.success(f"Admin {message.from_user.id} removed {channel} ({count} listings)")  # type: ignore[union-attr]
     except Exception as e:
         logger.error(f"Failed to remove {channel}: {e}")
-        await status.edit_text(f"❌ Failed to remove channel\n\n<code>{_esc(e)}</code>")
+        await status.edit_text(f"❌ Failed to remove channel\n\n<code>{esc_html(str(e)[:200])}</code>")
 
 
 @router.message(Command("listchannels"))
@@ -183,7 +184,7 @@ async def cmd_list_channels(message: Message):
         await status.edit_text("\n".join(lines))
     except Exception as e:
         logger.error(f"Failed to list channels: {e}")
-        await status.edit_text(f"❌ Error\n\n<code>{_esc(e)}</code>")
+        await status.edit_text(f"❌ Error\n\n<code>{esc_html(str(e)[:200])}</code>")
 
 
 @router.message(Command("backfill"))
@@ -214,17 +215,7 @@ async def cmd_backfill(message: Message):
         logger.success(f"Admin {message.from_user.id} backfilled {channel} ({indexed}/{limit})")  # type: ignore[union-attr]
     except Exception as e:
         logger.error(f"Backfill failed for {channel}: {e}")
-        await status.edit_text(f"❌ Backfill failed\n\n<code>{_esc(e)}</code>")
-
-
-def _esc(e: Exception) -> str:
-    """Escape HTML in error messages for Telegram."""
-    return str(e)[:200].replace("<", "&lt;").replace(">", "&gt;")
-
-
-def _esc_str(s: str) -> str:
-    """Escape arbitrary string for HTML."""
-    return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        await status.edit_text(f"❌ Backfill failed\n\n<code>{esc_html(str(e)[:200])}</code>")
 
 
 # ---------------------------------------------------------------------------
@@ -330,7 +321,7 @@ async def cmd_stats(message: Message):
         await status.edit_text("\n".join(lines))
     except Exception as e:
         logger.error(f"Stats failed: {e}")
-        await status.edit_text(f"❌ Error\n\n<code>{_esc(e)}</code>")
+        await status.edit_text(f"❌ Error\n\n<code>{esc_html(str(e)[:200])}</code>")
 
 
 def _pct(part: int, total: int) -> str:
@@ -367,12 +358,12 @@ async def cmd_auth(message: Message):
             name = getattr(me, "first_name", "Unknown")
             await client.disconnect()
             await status.edit_text(
-                f"✅ <b>Authenticated as {_esc_str(name)}</b>\n\n"
+                f"✅ <b>Authenticated as {esc_html(name)}</b>\n\n"
                 f"Session saved. Restart the crawler with <code>/restart crawler</code>"
             )
         except Exception as e:
             await client.disconnect()
-            await status.edit_text(f"❌ Auth failed\n\n<code>{_esc(e)}</code>")
+            await status.edit_text(f"❌ Auth failed\n\n<code>{esc_html(str(e)[:200])}</code>")
         return
 
     # Start new auth flow
@@ -407,7 +398,7 @@ async def cmd_auth(message: Message):
         )
     except Exception as e:
         logger.error(f"Auth command failed: {e}")
-        await status.edit_text(f"❌ Failed to send code\n\n<code>{_esc(e)}</code>")
+        await status.edit_text(f"❌ Failed to send code\n\n<code>{esc_html(str(e)[:200])}</code>")
 
 
 # ---------------------------------------------------------------------------
@@ -431,7 +422,7 @@ async def cmd_deploy(message: Message):
 
         await status.edit_text(
             f"🚀 <b>Deploying…</b>\n\n"
-            f"✅ git pull:\n<pre>{_esc_str(git_output[:500])}</pre>\n\n"
+            f"✅ git pull:\n<pre>{esc_html(git_output[:500])}</pre>\n\n"
             f"⏳ pip install…"
         )
 
@@ -447,7 +438,7 @@ async def cmd_deploy(message: Message):
         await status.edit_text(
             f"🚀 <b>Deploying…</b>\n\n"
             f"✅ git pull: done\n"
-            f"✅ pip: {_esc_str(pip_output[-200:]) if pip_output else 'ok'}\n\n"
+            f"✅ pip: {esc_html(pip_output[-200:]) if pip_output else 'ok'}\n\n"
             f"⏳ Restarting services…"
         )
 
@@ -474,7 +465,7 @@ async def cmd_deploy(message: Message):
         await status.edit_text("❌ Deploy timed out")
     except Exception as e:
         logger.error(f"Deploy failed: {e}")
-        await status.edit_text(f"❌ Deploy failed\n\n<code>{_esc(e)}</code>")
+        await status.edit_text(f"❌ Deploy failed\n\n<code>{esc_html(str(e)[:200])}</code>")
 
 
 @router.message(Command("restart"))
@@ -505,9 +496,9 @@ async def cmd_restart(message: Message):
         if proc.returncode == 0:
             await status.edit_text(f"✅ <b>{target}</b> restarted successfully")
         else:
-            await status.edit_text(f"❌ Restart failed\n\n<code>{_esc_str(stderr.decode()[:500])}</code>")
+            await status.edit_text(f"❌ Restart failed\n\n<code>{esc_html(stderr.decode()[:500])}</code>")
     except asyncio.TimeoutError:
         await status.edit_text("❌ Restart timed out")
     except Exception as e:
         logger.error(f"Restart failed: {e}")
-        await status.edit_text(f"❌ Error\n\n<code>{_esc(e)}</code>")
+        await status.edit_text(f"❌ Error\n\n<code>{esc_html(str(e)[:200])}</code>")

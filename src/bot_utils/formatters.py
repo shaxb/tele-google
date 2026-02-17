@@ -104,12 +104,12 @@ def format_result_message(index: int, result: Dict[str, Any]) -> str:
 
     return (
         f"<b>{index}.</b> {emoji} {pct}% match\n"
-        f"{_esc_html(preview)}\n"
+        f"{esc_html(preview)}\n"
         f"🔗 <a href='{link}'>Original message</a>"
     )
 
 
-def _esc_html(text: str) -> str:
+def esc_html(text: str) -> str:
     """Escape HTML special characters."""
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
@@ -133,7 +133,7 @@ def format_valuation_result(query: str, data: Dict[str, Any]) -> str:
     count = data["sample_count"]
 
     lines = [
-        f"💰 <b>Price Check: {_esc_html(query)}</b>\n",
+        f"💰 <b>Price Check: {esc_html(query)}</b>\n",
         f"📊 Based on <b>{count}</b> similar listings\n",
         f"🎯 <b>Fair value: {median}</b>",
         f"📈 Average: {mean}",
@@ -153,9 +153,9 @@ def format_valuation_result(query: str, data: Dict[str, Any]) -> str:
             p_str = _fmt_price(price)
             if mid and ch:
                 link = f"https://t.me/{ch.lstrip('@')}/{mid}"
-                lines.append(f"  • {_esc_html(title)} — {p_str} <a href='{link}'>→</a>")
+                lines.append(f"  • {esc_html(title)} — {p_str} <a href='{link}'>→</a>")
             else:
-                lines.append(f"  • {_esc_html(title)} — {p_str}")
+                lines.append(f"  • {esc_html(title)} — {p_str}")
 
     lines.append(f"\n💡 <i>Prices based on recent marketplace listings</i>")
     return "\n".join(lines)

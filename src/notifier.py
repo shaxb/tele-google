@@ -26,14 +26,7 @@ from aiogram.enums import ParseMode
 from loguru import logger
 
 from src.config import get_config
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-def _esc(s: Any) -> str:
-    """Escape text for HTML."""
-    return str(s).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+from src.bot_utils.formatters import esc_html
 
 
 # ---------------------------------------------------------------------------
@@ -144,7 +137,7 @@ class Notifier:
                 extra = "  🧩 " + " | ".join(f"{k}: {v}" for k, v in extras.items()) + "\n"
 
         self._enqueue(
-            f"📦 <b>{_esc(title)}</b>\n"
+            f"📦 <b>{esc_html(title)}</b>\n"
             f"{link_line}"
             f"  💰 {price_str} | 📂 {cat} | 📡 {channel}\n"
             f"{extra}"
@@ -168,7 +161,7 @@ class Notifier:
         pct = abs(deviation) * 100
         self._enqueue(
             f"🔥 <b>DEAL DETECTED</b>\n"
-            f"  {_esc(title)}\n"
+            f"  {esc_html(title)}\n"
             f"  💰 {price:,.0f} {currency} vs median {median:,.0f}\n"
             f"  📉 {pct:.0f}% below market"
         )
@@ -202,8 +195,8 @@ class Notifier:
             if len(errors) == 1:
                 e = errors[0]
                 self._enqueue(
-                    f"🔴 <b>Error</b> in {_esc(e['ctx'])}\n"
-                    f"  <code>{_esc(e['err'])}</code>\n"
+                    f"🔴 <b>Error</b> in {esc_html(e['ctx'])}\n"
+                    f"  <code>{esc_html(e['err'])}</code>\n"
                     f"  🕐 {e['time']}"
                 )
             else:
@@ -213,10 +206,10 @@ class Notifier:
                     groups[e["ctx"]] += 1
                 lines = [f"🔴 <b>{len(errors)} errors</b> in last 60s\n"]
                 for ctx, cnt in sorted(groups.items(), key=lambda x: -x[1]):
-                    lines.append(f"  • {_esc(ctx)}: {cnt}x")
+                    lines.append(f"  • {esc_html(ctx)}: {cnt}x")
                 # Show last error detail
                 last = errors[-1]
-                lines.append(f"\n  Last: <code>{_esc(last['err'])}</code>")
+                lines.append(f"\n  Last: <code>{esc_html(last['err'])}</code>")
                 self._enqueue("\n".join(lines))
 
 
