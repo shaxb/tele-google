@@ -10,15 +10,12 @@ from aiogram import Bot, Dispatcher, Router, F
 from aiogram.filters import Command, CommandStart
 from aiogram.types import Message, CallbackQuery, InaccessibleMessage
 from aiogram.enums import ParseMode, ChatAction
-from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import State, StatesGroup
 from aiogram.client.default import DefaultBotProperties
 from loguru import logger
 
 from src.config import get_config
-from src.database import init_db, get_session
-from src.database.models import Listing, SearchAnalytics
-from src.database.repository import UserRepository
+from src.database import init_db
+from src.database.repository import UserRepository, ListingRepository, SearchAnalyticsRepository
 from src.notifier import get_notifier
 from src.search_engine import get_search_engine
 from src.i18n import get_i18n
@@ -35,10 +32,6 @@ bot = Bot(token=config.bot.token, default=DefaultBotProperties(parse_mode=ParseM
 dp = Dispatcher()
 router = Router(name="main")
 i18n = get_i18n()
-
-
-class SearchStates(StatesGroup):
-    waiting_for_query = State()
 
 
 # ---------------------------------------------------------------------------
@@ -72,18 +65,15 @@ async def _perform_search(query_text: str, user_id: int) -> dict:
     results = await get_search_engine().search(query_text, limit=5)
     elapsed_ms = int((datetime.now() - start).total_seconds() * 1000)
 
-    result_ids = [r.get("id") for r in results if r.get("id")]
+    result_ids = [r["id"] for r in results if r.get("id")]
 
     try:
         await UserRepository.increment_searches(user_id)
-        async with get_session() as session:
-            session.add(SearchAnalytics(
-                user_id=user_id, query_text=query_text,
-                results_count=len(results), response_time_ms=elapsed_ms,
-                result_listing_ids=result_ids,
-                searched_at=datetime.now(),
-            ))
-            await session.commit()
+        await SearchAnalyticsRepository.record(
+            user_id=user_id, query_text=query_text,
+            results_count=len(results), response_time_ms=elapsed_ms,
+            result_listing_ids=result_ids,
+        )
     except Exception as e:
         logger.error(f"Analytics tracking failed: {e}")
 
@@ -147,20 +137,6 @@ async def cmd_help(message: Message):
     await message.answer(format_help_message(lang))
 
 
-@router.message(Command("search"))
-async def cmd_search(message: Message, state: FSMContext):
-    if not message.from_user:
-        return
-    await _track_user(message)
-    lang = await get_user_language(message.from_user.id, message.from_user.language_code)
-    await state.set_state(SearchStates.waiting_for_query)
-    await message.answer(
-        f"🔍 <b>{i18n.get('commands.search.title', lang)}</b>\n\n"
-        f"{i18n.get('commands.search.prompt', lang)}\n\n"
-        f"<i>{i18n.get('commands.search.hint', lang)}</i>"
-    )
-
-
 @router.message(Command("language"))
 async def cmd_language(message: Message):
     if not message.from_user:
@@ -220,15 +196,6 @@ async def cmd_price(message: Message):
 # Message handlers
 # ---------------------------------------------------------------------------
 
-@router.message(SearchStates.waiting_for_query)
-async def handle_search_query(message: Message, state: FSMContext):
-    await state.clear()
-    if not message.text or not message.from_user:
-        return
-    lang = await get_user_language(message.from_user.id, message.from_user.language_code)
-    await _send_search_results(message, message.text.strip(), lang)
-
-
 @router.message(F.text & ~F.text.startswith("/"))
 async def handle_text_message(message: Message):
     if not message.text or not message.from_user:
@@ -284,14 +251,9 @@ async def _periodic_health():
             sys_info = stdout.decode().strip()
 
             # DB stats
-            async with get_session() as session:
-                from sqlalchemy import func, select
-                total = (await session.execute(
-                    select(func.count()).select_from(Listing)
-                )).scalar() or 0
-                with_price = (await session.execute(
-                    select(func.count()).select_from(Listing).where(Listing.price.isnot(None))
-                )).scalar() or 0
+            counts = await ListingRepository.get_counts()
+            total = counts["total"]
+            with_price = counts["with_price"]
 
             # Pipeline metrics from notifier
             m = notifier.metrics

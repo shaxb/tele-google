@@ -1,12 +1,12 @@
 """Repository layer — clean interface for all DB operations."""
 
-from typing import List, Optional
+from typing import Dict, List, Optional
 from datetime import datetime
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.dialects.postgresql import insert
 
 from src.database.connection import get_session
-from src.database.models import MonitoredChannel, TelegramSession, Listing, User
+from src.database.models import MonitoredChannel, TelegramSession, Listing, User, SearchAnalytics
 
 
 class ChannelRepository:
@@ -124,6 +124,41 @@ class ListingRepository:
                 .where(Listing.id == listing_id)
                 .values(deal_score=deal_score)
             )
+            await session.commit()
+
+    @staticmethod
+    async def get_counts() -> Dict[str, int]:
+        """Return total listings and count with price."""
+        async with get_session() as session:
+            total = (await session.execute(
+                select(func.count()).select_from(Listing)
+            )).scalar() or 0
+            with_price = (await session.execute(
+                select(func.count()).select_from(Listing).where(Listing.price.isnot(None))
+            )).scalar() or 0
+        return {"total": total, "with_price": with_price}
+
+
+class SearchAnalyticsRepository:
+    """Track search queries for analytics."""
+
+    @staticmethod
+    async def record(
+        user_id: int,
+        query_text: str,
+        results_count: int,
+        response_time_ms: int,
+        result_listing_ids: Optional[List[int]] = None,
+    ) -> None:
+        async with get_session() as session:
+            session.add(SearchAnalytics(
+                user_id=user_id,
+                query_text=query_text,
+                results_count=results_count,
+                response_time_ms=response_time_ms,
+                result_listing_ids=result_listing_ids,
+                searched_at=datetime.utcnow(),
+            ))
             await session.commit()
 
 
